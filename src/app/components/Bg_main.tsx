@@ -5,7 +5,7 @@ import React from 'react'
 const Bg_main = () => {
   
   return (
-    <main className='flex flex-col justify-center items-center p-24 max-h-screen overflow-hidden'>
+    <main className='flex flex-col justify-center items-center p-24 max-h-screen overflow-hidden 2xl:mt-8'>
             <h1 className='uppercase text-white tracking-[1.25rem] font-medium px-8 text-4xl mt-20'>Welcome to Examination</h1>
             <div className='flex items-center justify-center'>
                 <Link href="/getstarted" className='bg-transparent text-white border border-white text-[12px] 

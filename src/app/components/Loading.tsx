@@ -4,24 +4,33 @@ import { motion } from 'framer-motion'
 
 const Loading = () => {
   return (
-    <div className="flex flex-col justify-center items-center h-screen bg-transparent text-white">
-      {/* วงกลมแบบ futuristic */}
+    <div className="flex flex-col justify-center items-center h-screen bg-transparent">
+      {/* วงแหวนเส้นวิ่ง */}
       <motion.div
-        className="rounded-full border-t-4 border-b-4 border-blue-500 h-24 w-24 mb-10 shadow-[0_0_40px_#3b82f6] bg-gradient-to-tr from-blue-800 to-blue-600"
-        animate={{
-          rotate: 360,
-          scale: [1, 1.1, 1],
-        }}
+        className="relative h-16 w-16"
+        animate={{ rotate: 360 }}
         transition={{
           repeat: Infinity,
-          duration: 2,
-          ease: 'easeInOut',
+          duration: 1.2,
+          ease: 'linear',
         }}
-      />
+      >
+        {/* เส้นโค้งไล่สี + glow */}
+        <div
+          className="absolute inset-0 rounded-full"
+          style={{
+            background:
+              'conic-gradient(from 0deg, #2c57f2 0deg, #2c3ff2 60deg, transparent 120deg, transparent 360deg)',
+            filter: 'drop-shadow(0 0 15px #1300ba)',
+            maskImage: 'radial-gradient(circle, transparent 60%, black 61%)', // วงในโปร่งใส
+            WebkitMaskImage: 'radial-gradient(circle, transparent 60%, black 61%)',
+          }}
+        />
+      </motion.div>
 
-      {/* ข้อความพิมพ์ดีด */}
+      {/* ข้อความ */}
       <motion.p
-        className="text-xl font-mono tracking-widest text-blue-800"
+        className="text-xl font-mono tracking-widest text-blue-600 mt-6 drop-shadow-[0_0_5px_#3b82f6]"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{
@@ -30,7 +39,7 @@ const Loading = () => {
           repeatType: 'reverse',
         }}
       >
-      Loading
+        Loading
       </motion.p>
     </div>
   )

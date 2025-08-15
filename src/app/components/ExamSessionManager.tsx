@@ -7,7 +7,6 @@
 import { supabase } from '../../lib/supabaseClient';
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { PREDEFINED_ROOMS } from '../../data/predefinedRooms'; // ตรวจสอบ path
 import {
   ExamRoom, ExamRoomAllocation, ExaminerType, SeatPosition,
   SavedPlan, InsertPlanData, CurrentExamSessionState
@@ -395,8 +394,6 @@ export default function ExamSessionManager() {
     const sessionToUpdate: SavedPlan = {
       seatpid: currentSession.id,
       plan_name: currentSession.name,
-      // ใช้ currentSession.seatingPattern ซึ่งเป็น Type ที่แคบกว่า
-      // ต้องแปลงจาก CurrentExamSessionState['seatingPattern'] เป็น SavedPlan['seating_pattern']
       seating_pattern: currentSession.seatingPattern === 'custom_layout' ? 'custom_layout' : currentSession.seatingPattern,
       room_rows: currentSession.roomDimensions?.rows || 0,
       room_cols: currentSession.roomDimensions?.cols || 0,
@@ -750,7 +747,7 @@ export default function ExamSessionManager() {
               </div>
             </div>
             <RoomSelector
-              availableRooms={PREDEFINED_ROOMS}
+              //availableRooms={PREDEFINED_ROOMS}
               selectedRooms={selectedRooms}
               onRoomSelectionChange={setSelectedRooms}
             />

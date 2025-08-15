@@ -5,6 +5,7 @@ import React, { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabaseClient'; // ตรวจสอบว่า path ถูกต้อง
 import { SavedPlan, ExamRoomAllocation } from '@/types/examTypes';
 import PlanDetailsModal from './PlanDetailsModal'; // Import the new modal component
+import Loading from './Loading';
 
 export default function SavedPlansPanel({
   onLoadArrangement,
@@ -74,7 +75,7 @@ export default function SavedPlansPanel({
   };
 
   if (loading) {
-    return <div className="p-6 text-gray-500">กำลังโหลดแผนที่นั่ง...</div>;
+    return <Loading/>;
   }
 
   if (savedPlans.length === 0) {

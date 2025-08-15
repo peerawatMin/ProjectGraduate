@@ -114,3 +114,5 @@ export const loadArrangement = async (planIdentifier: string | number): Promise<
 
   return data as SavedPlan;
 };
+
+export { supabase };

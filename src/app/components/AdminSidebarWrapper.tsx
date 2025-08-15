@@ -3,7 +3,7 @@
 
 import { useAuth } from '../../hooks/useAuth'
 import Sidebar, { SidebarItem } from './Sidebar'
-import { Home, Settings, Users, Cuboid, Armchair } from 'lucide-react'
+import { Users, Cuboid, Armchair, House, HousePlus, LayoutDashboard } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 
 export default function AdminSidebarWrapper() {
@@ -29,15 +29,9 @@ export default function AdminSidebarWrapper() {
   return (
     <Sidebar user={user} onLogout={handleLogout}>
       <SidebarItem 
-        icon={<Home size={20} />} 
+        icon={<LayoutDashboard size={20} />} 
         text="Dashboard" 
         href="/Dashboard"  
-        active={false}
-      />
-      <SidebarItem 
-        icon={<Armchair size={20} />} 
-        text="Seat Assignment" 
-        href="/seat_assignment" 
         active={false}
       />
       <SidebarItem 
@@ -47,15 +41,28 @@ export default function AdminSidebarWrapper() {
         active={false}
       />
       <SidebarItem 
+        icon={<Armchair size={20} />} 
+        text="Seat Assignment" 
+        href="/seat_assignment" 
+        active={false}
+      />
+      
+      <SidebarItem 
         icon={<Cuboid size={20} />} 
         text="SeatPlans" 
         href="/exam-dashboard" 
         active={false}
       />
       <SidebarItem 
-        icon={<Settings size={20} />} 
-        text="Settings" 
-        href="/settings" 
+        icon={<House size={20} />} 
+        text="Rooms" 
+        href="/rooms" 
+        active={false}
+      />
+      <SidebarItem 
+        icon={<HousePlus size={20} />} 
+        text="CreateRoom" 
+        href="/create-room" 
         active={false}
       />
     </Sidebar>
