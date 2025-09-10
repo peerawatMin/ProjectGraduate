@@ -1,20 +1,16 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextResponse } from "next/server";
-import { supabaseAdmin } from "../../../../lib/supabaseAdmin";
-import type { ExamSession, InsertExamSessionData } from "../../../../types/examTypes";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import type { ExamSession, InsertExamSessionData } from "@/types/examTypes";
 
-// เลือกใช้ตามต้องการ
 export const runtime = "nodejs";
-// export const dynamic = "force-dynamic";
-
-type ParamShape = { id: string };
 
 // GET /api/exam-session/[id]
 export async function GET(
   _req: Request,
-  context: { params: Promise<ParamShape> }
+  { params }: { params: { id: string } }
 ) {
-  const { id } = await context.params;
+  const { id } = params;
 
   try {
     const { data, error } = await supabaseAdmin
@@ -35,9 +31,9 @@ export async function GET(
 // PUT /api/exam-session/[id]
 export async function PUT(
   req: Request,
-  context: { params: Promise<ParamShape> }
+  { params }: { params: { id: string } }
 ) {
-  const { id } = await context.params;
+  const { id } = params;
 
   try {
     const body: InsertExamSessionData = await req.json();
@@ -65,9 +61,9 @@ export async function PUT(
 // DELETE /api/exam-session/[id]
 export async function DELETE(
   _req: Request,
-  context: { params: Promise<ParamShape> }
+  { params }: { params: { id: string } }
 ) {
-  const { id } = await context.params;
+  const { id } = params;
 
   try {
     const { error } = await supabaseAdmin
