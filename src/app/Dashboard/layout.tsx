@@ -1,23 +1,20 @@
-// src/app/(dashboard)/layout.tsx (ปรับปรุง)
-'use client'
+// ตัวอย่าง: src/app/Dashboard/layout.tsx
+import { redirect } from 'next/navigation'
+import { cookies } from 'next/headers'
+import jwt from 'jsonwebtoken'
+import DashboardLayoutClient from './DashboardLayoutClient'
 
-import AdminSidebarWrapper from '../components/AdminSidebarWrapper'
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
 
-export default function DashboardLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="flex h-screen bg-gray-200">
-      <div className="flex-shrink-0">
-        <AdminSidebarWrapper />
-      </div>
-      <div className="flex flex-col flex-1 overflow-hidden">
-        <main className="flex-1 overflow-y-auto bg-gray-200 p-4">
-          {children}
-        </main>
-      </div>
-    </div>
-  );
+export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
+  const token = (await cookies()).get('authToken')?.value
+  if (!token) {
+    redirect('/login?redirect=/Dashboard')
+  }
+  try {
+    jwt.verify(token, JWT_SECRET)
+  } catch {
+    redirect('/login?redirect=/Dashboard')
+  }
+  return <DashboardLayoutClient>{children}</DashboardLayoutClient>
 }

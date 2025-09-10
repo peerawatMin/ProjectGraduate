@@ -1,4 +1,4 @@
-// app/layout.tsx
+// src/app/layout.tsx
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
@@ -7,6 +7,9 @@ import { AuthProvider } from "../hooks/useAuth";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
+import SupabaseAuthListener from "./components/SupabaseAuthListener";
+import { getSupabaseServerClient } from "@/lib/supabaseServer";
+
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
@@ -14,28 +17,28 @@ export const metadata: Metadata = {
   description: "Exam Management",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const supabase = await getSupabaseServerClient();
+  const { data: { session } } = await supabase.auth.getSession();
+
   return (
     <html lang="th" suppressHydrationWarning>
-      {/* ลบ bg-background ออก เพื่อไม่ให้ทับ gradient ของ System/Dark */}
       <body className={inter.className}>
-        
-          <AuthProvider>
-            {children}
-          </AuthProvider>
+        {/* sync session ฝั่ง client -> server */}
+        <SupabaseAuthListener serverAccessToken={session?.access_token} />
 
-          {/* จะให้ Toast เปลี่ยนตามธีมจริง ให้เปลี่ยน theme="colored" เป็น light/dark ตาม resolvedTheme ก็ได้ */}
-          <ToastContainer
-            position="top-right"
-            autoClose={1000}
-            hideProgressBar={false}
-            newestOnTop={false}
-            closeOnClick
-            pauseOnHover
-            draggable
-            theme="colored"
-          />
-        
+        <AuthProvider>{children}</AuthProvider>
+
+        <ToastContainer
+          position="top-right"
+          autoClose={1000}
+          hideProgressBar={false}
+          newestOnTop={false}
+          closeOnClick
+          pauseOnHover
+          draggable
+          theme="colored"
+        />
       </body>
     </html>
   );

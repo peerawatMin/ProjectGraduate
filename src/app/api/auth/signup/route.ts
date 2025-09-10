@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 // src/app/api/auth/signup/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
@@ -16,66 +15,35 @@ export async function POST(request: NextRequest) {
     const { email, password, phone, firstName, lastName } = await request.json();
 
     if (!email || !password || !phone || !firstName || !lastName) {
-      return NextResponse.json(
-        { message: 'กรุณากรอกข้อมูลให้ครบถ้วน' },
-        { status: 400 }
-      );
+      return NextResponse.json({ message: 'กรุณากรอกข้อมูลให้ครบถ้วน' }, { status: 400 });
     }
 
-    // ตรวจสอบว่าอีเมลซ้ำหรือไม่
-    const { data: existingAdmin, error: checkError } = await supabase
+    const { data: existingAdmin } = await supabase
       .from('admin')
       .select('email')
       .eq('email', email)
-      .single();
+      .maybeSingle();
 
     if (existingAdmin) {
-      return NextResponse.json(
-        { message: 'อีเมลนี้ถูกใช้งานแล้ว' },
-        { status: 400 }
-      );
+      return NextResponse.json({ message: 'อีเมลนี้ถูกใช้งานแล้ว' }, { status: 400 });
     }
 
-    // เข้ารหัสรหัสผ่านด้วย bcrypt
-    const saltRounds = 12;
-    const hashedPassword = await bcrypt.hash(password, saltRounds);
+    const hashedPassword = await bcrypt.hash(password, 12);
 
-    // บันทึกข้อมูลลงฐานข้อมูล
     const { data: newAdmin, error: insertError } = await supabase
       .from('admin')
-      .insert([
-        {
-          email,
-          password: hashedPassword,
-          phone,
-          first_name: firstName,
-          last_name: lastName,
-        },
-      ])
+      .insert([{ email, password: hashedPassword, phone, first_name: firstName, last_name: lastName }])
       .select()
       .single();
 
-    if (insertError) {
+    if (insertError || !newAdmin) {
       console.error('Database insert error:', insertError);
-      return NextResponse.json(
-        { message: 'เกิดข้อผิดพลาดในการสมัครสมาชิก' },
-        { status: 500 }
-      );
+      return NextResponse.json({ message: 'เกิดข้อผิดพลาดในการสมัครสมาชิก' }, { status: 500 });
     }
 
-    // สร้าง JWT token สำหรับ auto-login หลังจาก signup
-    const token = jwt.sign(
-      { userId: newAdmin.id },
-      JWT_SECRET,
-      { expiresIn: '24h' }
-    );
+    const token = jwt.sign({ userId: newAdmin.id }, JWT_SECRET, { expiresIn: '24h' });
 
-    // ส่งข้อมูลกลับ (ไม่ส่งรหัสผ่าน)
-    const responseUser = {
-      id: newAdmin.id,
-      email: newAdmin.email,
-    };
-
+    const responseUser = { id: newAdmin.id, email: newAdmin.email };
     const responseProfile = {
       id: newAdmin.id,
       email: newAdmin.email,
@@ -84,31 +52,25 @@ export async function POST(request: NextRequest) {
       phone: newAdmin.phone,
     };
 
-    console.log('Signup successful for admin:', newAdmin.id);
-
-    // Set JWT token in HTTP-only cookie
-    const response = NextResponse.json({
+    const res = NextResponse.json({
       user: responseUser,
       profile: responseProfile,
-      token: token, // Include token for auto-login
+      token,
       requiresEmailConfirmation: false,
     });
 
-    // Set HTTP-only cookie as well for additional security
-    response.cookies.set('authToken', token, {
+    // ✅ ตั้งคุกกี้ทั้งไซต์
+    res.cookies.set('authToken', token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: 24 * 60 * 60, // 24 hours
+      sameSite: 'lax',
+      path: '/',                      // ✅ ต้องมี
+      maxAge: 60 * 60 * 24,
     });
 
-    return response;
-
-  } catch (error) {
-    console.error('Signup error:', error);
-    return NextResponse.json(
-      { message: 'เกิดข้อผิดพลาดของเซิร์ฟเวอร์' },
-      { status: 500 }
-    );
+    return res;
+  } catch (err) {
+    console.error('Signup error:', err);
+    return NextResponse.json({ message: 'เกิดข้อผิดพลาดของเซิร์ฟเวอร์' }, { status: 500 });
   }
 }

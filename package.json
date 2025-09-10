@@ -11,6 +11,7 @@
   "dependencies": {
     "@hookform/resolvers": "^5.1.1",
     "@supabase/auth-helpers-nextjs": "^0.10.0",
+    "@supabase/ssr": "^0.7.0",
     "@supabase/supabase-js": "^2.50.3",
     "bcryptjs": "^3.0.2",
     "framer-motion": "^12.18.1",

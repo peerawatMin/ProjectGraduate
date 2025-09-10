@@ -14,77 +14,28 @@ export async function POST(request: NextRequest) {
   try {
     const { email, password } = await request.json();
 
-    console.log('Signin attempt for email:', email);
-
-    // Basic validation
     if (!email || !password) {
-      console.log('Missing required fields');
-      return NextResponse.json(
-        { message: 'Email and password are required' },
-        { status: 400 }
-      );
+      return NextResponse.json({ message: 'Email and password are required' }, { status: 400 });
     }
 
-    // Find admin by email
-    console.log('Looking for admin with email:', email);
     const { data: admin, error } = await supabase
       .from('admin')
       .select('*')
       .eq('email', email)
       .single();
 
-    if (error) {
-      console.error('Database error:', error);
-      if (error.code === 'PGRST116') {
-        // No rows found
-        console.log('Admin not found');
-        return NextResponse.json(
-          { message: 'Invalid email or password' },
-          { status: 401 }
-        );
-      }
-      return NextResponse.json(
-        { message: 'Database error while finding admin' },
-        { status: 500 }
-      );
+    if (error || !admin) {
+      return NextResponse.json({ message: 'Invalid email or password' }, { status: 401 });
     }
 
-    if (!admin) {
-      console.log('Admin not found');
-      return NextResponse.json(
-        { message: 'Invalid email or password' },
-        { status: 401 }
-      );
-    }
-
-    console.log('Admin found, verifying password...');
-    
-    // Verify password using bcrypt
     const isValidPassword = await bcrypt.compare(password, admin.password);
-    
     if (!isValidPassword) {
-      console.log('Invalid password');
-      return NextResponse.json(
-        { message: 'Invalid email or password' },
-        { status: 401 }
-      );
+      return NextResponse.json({ message: 'Invalid email or password' }, { status: 401 });
     }
 
-    console.log('Password verified successfully');
+    const token = jwt.sign({ userId: admin.id }, JWT_SECRET, { expiresIn: '24h' });
 
-    // Create JWT token
-    const token = jwt.sign(
-      { userId: admin.id },
-      JWT_SECRET,
-      { expiresIn: '24h' }
-    );
-
-    // Return user data (ไม่ส่ง password กลับ)
-    const responseUser = {
-      id: admin.id,
-      email: admin.email,
-    };
-
+    const responseUser = { id: admin.id, email: admin.email };
     const responseProfile = {
       id: admin.id,
       email: admin.email,
@@ -93,30 +44,24 @@ export async function POST(request: NextRequest) {
       phone: admin.phone,
     };
 
-    console.log('Signin successful for admin:', admin.id);
-
-    // Set JWT token in HTTP-only cookie
-    const response = NextResponse.json({
+    const res = NextResponse.json({
       user: responseUser,
       profile: responseProfile,
-      token: token, // Include token in response for client-side storage
+      token, // optional: เผื่อ client อยากเก็บเอง (แต่ไม่จำเป็น)
     });
 
-    // Set HTTP-only cookie as well for additional security
-    response.cookies.set('authToken', token, {
+    // 🔧 จุดสำคัญ: ตั้งคุกกี้แบบ HTTP-only ใช้ได้ทั้งไซต์
+    res.cookies.set('authToken', token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: 24 * 60 * 60, // 24 hours
+      sameSite: 'lax',          // 'lax' จะเวิร์กกับ flow redirect ได้ดี
+      path: '/',                // ✅ ต้องมี! ไม่งั้น cookie ใช้ได้เฉพาะ /api/auth/*
+      maxAge: 60 * 60 * 24,     // 24h
     });
 
-    return response;
-
-  } catch (error) {
-    console.error('Signin error:', error);
-    return NextResponse.json(
-      { message: 'Internal server error' },
-      { status: 500 }
-    );
+    return res;
+  } catch (err) {
+    console.error('Signin error:', err);
+    return NextResponse.json({ message: 'Internal server error' }, { status: 500 });
   }
 }
