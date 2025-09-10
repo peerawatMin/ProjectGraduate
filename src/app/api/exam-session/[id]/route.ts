@@ -3,18 +3,18 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin } from "../../../../lib/supabaseAdmin";
 import type { ExamSession, InsertExamSessionData } from "../../../../types/examTypes";
 
-// (ถ้าต้องการบังคับรันบน Node runtime และไม่แคช)
+// เลือกใช้ตามต้องการ
 export const runtime = "nodejs";
-// หรือจะใช้: export const dynamic = "force-dynamic";
+// export const dynamic = "force-dynamic";
 
-type Params = { id: string };
+type ParamShape = { id: string };
 
 // GET /api/exam-session/[id]
 export async function GET(
   _req: Request,
-  { params }: { params: Params }
+  context: { params: Promise<ParamShape> }
 ) {
-  const { id } = params;
+  const { id } = await context.params;
 
   try {
     const { data, error } = await supabaseAdmin
@@ -24,22 +24,20 @@ export async function GET(
       .single();
 
     if (error) throw error;
-    if (!data) {
-      return NextResponse.json({ error: "Not found" }, { status: 404 });
-    }
+    if (!data) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
     return NextResponse.json(data as ExamSession);
   } catch (error: any) {
-    return NextResponse.json({ error: String(error.message ?? error) }, { status: 500 });
+    return NextResponse.json({ error: String(error?.message ?? error) }, { status: 500 });
   }
 }
 
 // PUT /api/exam-session/[id]
 export async function PUT(
   req: Request,
-  { params }: { params: Params }
+  context: { params: Promise<ParamShape> }
 ) {
-  const { id } = params;
+  const { id } = await context.params;
 
   try {
     const body: InsertExamSessionData = await req.json();
@@ -51,7 +49,7 @@ export async function PUT(
       .select();
 
     if (error) throw error;
-    if (!data || data.length === 0) {
+    if (!data?.length) {
       return NextResponse.json({ error: "Update failed or not found" }, { status: 404 });
     }
 
@@ -60,16 +58,16 @@ export async function PUT(
       data: data[0] as ExamSession,
     });
   } catch (error: any) {
-    return NextResponse.json({ error: String(error.message ?? error) }, { status: 500 });
+    return NextResponse.json({ error: String(error?.message ?? error) }, { status: 500 });
   }
 }
 
 // DELETE /api/exam-session/[id]
 export async function DELETE(
   _req: Request,
-  { params }: { params: Params }
+  context: { params: Promise<ParamShape> }
 ) {
-  const { id } = params;
+  const { id } = await context.params;
 
   try {
     const { error } = await supabaseAdmin
@@ -81,6 +79,6 @@ export async function DELETE(
 
     return NextResponse.json({ message: "ลบรอบสอบสำเร็จ" });
   } catch (error: any) {
-    return NextResponse.json({ error: String(error.message ?? error) }, { status: 500 });
+    return NextResponse.json({ error: String(error?.message ?? error) }, { status: 500 });
   }
 }
