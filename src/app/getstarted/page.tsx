@@ -1,14 +1,48 @@
 // src/app/page.tsx
 'use client';
 
+import { useState } from 'react';
 import Section from '../components/Section';
 import ScrollProgressBar from '../components/ScrollProgressBar';
 import Link from 'next/link';
 import SmoothScrollControl from '../components/SmoothScrollControl';
 import NavbarWithSection from '../components/NavbarWithSection';
 import Image from 'next/image';
+import { motion, AnimatePresence } from 'framer-motion'
 
 export default function Home() {
+    const [selectedPlan, setSelectedPlan] = useState<{
+    title: string;
+    desc: string;
+    img: string;
+  } | null>(null);
+    const plans = [
+    {
+      title: "รูปแบบแผนผังที่ 1",
+      desc: "แผนผังที่นั่งสอบรูปนี้เป็นแบบแถวแนวคอลัมน์ ผู้เข้าสอบจะถูกจัดให้นั่งตามลำดับแนวตั้ง",
+      img: "/planA.png",
+      bg: "bg-gradient-to-tr from-emerald-900 via-green-800 to-emerald-700"
+    },
+    {
+      title: "รูปแบบแผนผังที่ 2",
+      desc: "แผนผังที่นั่งสอบรูปนี้เป็นแบบแถวแนวคอลัมน์ ผู้เข้าสอบจะถูกจัดให้นั่งตามลำดับแนวตั้ง แต่จะแค่ตรงกลางที่ไม่มีที่นั่ง 1 แถว",
+      img: "/planB.png",
+      bg: "bg-gradient-to-tr from-emerald-900 via-green-800 to-emerald-700"
+    },
+    {
+      title: "รูปแบบแผนผังที่ 3",
+      desc: "แผนผังที่นั่งสอบรูปนี้เป็นแบบแถวแนวนอน ผู้เข้าสอบจะถูกจัดให้นั่งตามลำดับแนวนอน",
+      img: "/planC.png",
+      bg: "bg-gradient-to-tr from-emerald-900 via-green-800 to-emerald-700"
+    },
+    {
+      title: "รูปแบบแผนผังที่ 4",
+      desc: "แผนผังที่นั่งสอบรูปนี้เป็นแบบทรงเหมือนกรวยแนวตั้ง ผู้เข้าสอบจะถูกจัดให้นั่งตามลำดับแนวนอน",
+      img: "/planD.png",
+      bg: "bg-gradient-to-tr from-emerald-900 via-green-800 to-emerald-700"
+    }
+  ];
+
   return (
     <>
     <ScrollProgressBar />
@@ -38,103 +72,95 @@ export default function Home() {
         
          
         </Section>
-        <Section id="plan" className="bg-gradient-to-br from-[#6A9BA1] to-[#A7BBA8] relative w-full overflow-hidden py-20" >
-
-        {/* ชั้น overlay ทึบ ๆ เพื่อให้อ่าน text ง่าย */}
-        <div className="absolute top-0 left-0 w-full h-full z-10" />
-
-        {/* เนื้อหาหลัก */}
-        <div className="relative z-20">
-          <h2 className="text-3xl text-white font-bold mb-4 text-center">
-            รูปแบบแผนผังจัดที่นั่งสอบ
-          </h2>
-          <p className="text-white mb-6 text-center">
-            รูปแบบของแต่ละห้องที่ทางเว็บไซต์เราเตรียมไว้
-          </p>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-7xl px-4 mx-auto">
-            {/* Item 1 */}
-            <div className="bg-rose-600/90 rounded-xl shadow p-4 flex flex-col sm:flex-row items-center sm:items-start gap-4">
-              <Image
-                src="/planA.png"
-                alt="แผนผังที่นั่งสอบ 1"
-                width={300}
-                height={300}
-                className="object-cover rounded-md"
-              />
-              <div>
-                <h3 className="text-[16px] font-semibold mb-2 text-white">รูปแบบแผนผังที่ 1</h3>
-                <p className="text-white text-left">
-                  แผนผังที่นั่งสอบรูปนี้เป็นแบบแถวแนวคอลัมน์ ผู้เข้าสอบจะถูกจัดให้นั่งตามลำดับแนวตั้ง
-                </p>
+        <Section id="plan" className="bg-gradient-to-br from-[rgb(63,107,112)] to-[rgb(105,139,107)] relative w-full overflow-hidden py-20">
+              <div className="relative z-20">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-7xl px-4 mx-auto">
+                  {plans.map((plan, idx) => (
+                    <div
+                    key={idx}
+                    className={`${plan.bg} rounded-2xl shadow-lg p-4 flex flex-col items-center gap-4 cursor-pointer`}
+                    onClick={() => setSelectedPlan(plan)}
+                  >
+                    <Image
+                      src={plan.img}
+                      alt={plan.title}
+                      width={500}
+                      height={500}
+                      className="object-cover rounded-md"
+                    />
+                    <span className="text-white font-semibold text-center">{plan.title}</span>
+                  </div>
+                  ))}
+                </div>
               </div>
-            </div>
 
-            {/* Item 2 */}
-            <div className="bg-yellow-600/90 rounded-xl shadow p-4 flex flex-col sm:flex-row items-center sm:items-start gap-4">
-              <Image
-                src="/planB.png"
-                alt="แผนผังที่นั่งสอบ 2"
-                width={300}
-                height={300}
-                className="object-cover rounded-md"
-              />
-              <div>
-                <h3 className="text-[16px] font-semibold mb-2 text-white">รูปแบบแผนผังที่ 2</h3>
-                <p className="text-white text-left">
-                  แผนผังที่นั่งสอบรูปนี้เป็นแบบแถวแนวคอลัมน์ ผู้เข้าสอบจะถูกจัดให้นั่งตามลำดับแนวตั้ง แต่จะแค่ตรงกลางที่ไม่มีที่นั่ง 1 แถว
-                </p>
-              </div>
-            </div>
+              {/* Modal */}
+              <AnimatePresence>
+              {selectedPlan && (
+                <motion.div
+                  className="fixed inset-0 z-50 flex items-center justify-center px-4 sm:px-6 lg:px-8"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                >
+                  {/* Overlay */}
+                  <motion.div
+                    className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+                    onClick={() => setSelectedPlan(null)}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                  />
 
-            {/* Item 3 */}
-            <div className="bg-green-600/90 rounded-xl shadow p-4 flex flex-col sm:flex-row items-center sm:items-start gap-4">
-              <Image
-                src="/planC.png"
-                alt="แผนผังที่นั่งสอบ 3"
-                width={300}
-                height={300}
-                className="object-cover rounded-md"
-              />
-              <div>
-                <h3 className="text-[16px] font-semibold mb-2 text-white">รูปแบบแผนผังที่ 3</h3>
-                <p className="text-white text-left">
-                  แผนผังที่นั่งสอบรูปนี้เป็นแบบแถวแนวนอน ผู้เข้าสอบจะถูกจัดให้นั่งตามลำดับแนวนอน
-                </p>
-              </div>
-            </div>
+                  {/* Card */}
+                  <motion.div
+                    className="relative bg-gradient-to-tr from-emerald-800 via-green-700 to-emerald-600 rounded-3xl shadow-2xl max-w-5xl w-full sm:h-auto p-6 sm:p-8 z-50 flex flex-col items-center"
+                    initial={{ y: 50, opacity: 0, scale: 0.95 }}
+                    animate={{ y: 0, opacity: 1, scale: 1, transition: { duration: 0.3, ease: 'easeOut' } }}
+                    exit={{ y: 50, opacity: 0, scale: 0.95, transition: { duration: 0.2, ease: 'easeIn' } }}
+                  >
+                    {/* Close button */}
+                    <button
+                      className="absolute top-4 right-4 text-red-600 hover:text-red-900 font-bold text-3xl"
+                      onClick={() => setSelectedPlan(null)}
+                    >
+                      ✕
+                    </button>
 
-            {/* Item 4 */}
-            <div className="bg-blue-600/90 rounded-xl shadow p-4 flex flex-col sm:flex-row items-center sm:items-start gap-4">
-              <Image
-                src="/planD.png"
-                alt="แผนผังที่นั่งสอบ 4"
-                width={300}
-                height={300}
-                className="object-cover rounded-md"
-              />
-              <div>
-                <h3 className="text-[16px] font-semibold mb-2 text-white">รูปแบบแผนผังที่ 4</h3>
-                <p className="text-white text-left">
-                  แผนผังที่นั่งสอบรูปนี้เป็นแบบทรงเหมือนกรวยแนวตั้ง ผู้เข้าสอบจะถูกจัดให้นั่งตามลำดับแนวนอน
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </Section>
+                    {/* Image */}
+                    <Image
+                      src={selectedPlan.img}
+                      alt={selectedPlan.title}
+                      width={600}
+                      height={600}
+                      className="object-cover rounded w-full sm:w-[80%] max-h-[60vh] mb-6"
+                    />
+
+                    {/* Title */}
+                    <h3 className="text-2xl font-bold mb-3 text-center text-white">
+                      {selectedPlan.title}
+                    </h3>
+
+                    {/* Description */}
+                    <p className="text-gray-100 text-center sm:text-lg max-w-2xl">
+                      {selectedPlan.desc}
+                    </p>
+                  </motion.div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+        </Section>
 
 
-        <Section id="auto-assign" className="bg-gradient-to-tr from-[#6A9BA1] to-[#A7BBA8] bg-cover bg-center">
+        <Section id="auto-assign" className="bg-gradient-to-tr from-[rgb(63,107,112)] to-[rgb(105,139,107)] bg-cover bg-center">
         <video
-          className=" top-0 left-0 w-full h-full object-cover z-0 rounded-2xl"
+          className=" top-0 left-0 w-full h-full object-cover z-0 rounded-2xl "
           autoPlay
           loop
           muted
           playsInline
         >
-          <source src="/vdoSec1.mp4" type="video/mp4" />
-          Your browser does not support the video tag.
+          <source src="/vdoSec2.mp4" type="video/mp4" />
         </video>
         </Section>
 

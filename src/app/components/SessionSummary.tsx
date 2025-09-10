@@ -26,20 +26,38 @@ export default function SessionSummary({ session }: SessionSummaryProps) {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         <div className="space-y-3">
           <h3 className="font-medium text-white">ชื่อรอบสอบ</h3>
-          <div className="bg-blue-50 p-4 rounded-lg">
-            <p className="text-lg font-semibold text-sky-600">{session.name}</p>
+          <div className="bg-blue-50 p-3 rounded-lg">
+            <p className="text-md font-semibold text-sky-600">{session.name}</p>
           </div>
         </div>
         <div className="space-y-3">
           <h3 className="font-medium text-white">จำนวนผู้เข้าสอบ</h3>
-          <div className="bg-blue-50 p-4 rounded-lg">
-            <p className="text-lg font-semibold text-sky-600">{totalAllocated} / {session.totalExaminees} คน</p>
+          <div className="bg-blue-50 p-3 rounded-lg">
+            <p className="text-md font-semibold text-sky-600">{totalAllocated} / {session.totalExaminees} คน</p>
+          </div>
+        </div>
+        <div className="space-y-3">
+          <h3 className="font-medium text-white">ทิศทางการจัดเรียง</h3>
+          <div className="bg-blue-50 p-3 rounded-lg">
+            <p className="text-md font-semibold text-sky-600">{session.seatingPattern}</p>
           </div>
         </div>
         <div className="space-y-3">
           <h3 className="font-medium text-white">จำนวนห้องสอบ</h3>
-          <div className="bg-blue-50 p-4 rounded-lg">
-            <p className="text-lg font-semibold text-sky-600">{session.rooms.length} ห้อง</p>
+          <div className="bg-blue-50 p-3 rounded-lg">
+            <p className="text-md font-semibold text-sky-600">{session.rooms.length} ห้อง</p>
+          </div>
+        </div>
+        <div className="space-y-3">
+          <h3 className="font-medium text-white">วันที่สอบ</h3>
+          <div className="bg-blue-50 p-3 rounded-lg">
+            <p className="text-md font-semibold text-sky-600">{session.examDate}</p>
+          </div>
+        </div>
+        <div className="space-y-3">
+          <h3 className="font-medium text-white">ช่วงเวลาที่สอบ</h3>
+          <div className="bg-blue-50 p-3 rounded-lg">
+            <p className="text-md font-semibold text-sky-600">{session.examStartTime} - {session.examEndTime}</p>
           </div>
         </div>
       </div>

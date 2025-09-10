@@ -228,24 +228,42 @@ export async function PATCH(request: Request, context: Context) {
  * @param context - Context object containing dynamic parameters (id)
  * @returns NextResponse with success message or error
  */
-export async function DELETE(request: Request, context: Context) {
+export async function DELETE(request: Request, context: { params: { id: string } }) {
   try {
-    const { id } = context.params;
-    console.log('API: Deleting plan with ID:', id);
+    const { id: seatpid } = context.params;
+    console.log('API: Deleting plan with seatpid:', seatpid);
 
-    const { error } = await supabaseAdmin
+    // 1. หา session_id ของแผนที่นั่งนี้
+    const { data: planData, error: planError } = await supabaseAdmin
       .from('seating_plans')
-      .delete()
-      .eq('seatpid', id);
+      .select('session_id')
+      .eq('seatpid', seatpid)
+      .single();
 
-    if (error) {
-      console.error('Supabase error:', error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+    if (planError || !planData) {
+      return NextResponse.json({ error: 'ไม่พบ session_id ของแผนนี้' }, { status: 404 });
     }
 
-    return NextResponse.json({ message: 'ลบแผนที่นั่งสำเร็จ' });
+    const sessionId = planData.session_id;
+
+    // 2. ลบ exam_session (parent) → seating_plans + seat_assignment จะโดน cascade อัตโนมัติ
+    const { error: sessionError } = await supabaseAdmin
+      .from('exam_session')
+      .delete()
+      .eq('session_id', sessionId);
+
+    if (sessionError) {
+      console.error('Supabase error (exam_session):', sessionError);
+      return NextResponse.json({ error: sessionError.message }, { status: 500 });
+    }
+
+    return NextResponse.json({ message: 'ลบ exam_session และข้อมูลทั้งหมดที่เกี่ยวข้องเรียบร้อย' });
+
   } catch (error: any) {
-    console.error('API error (DELETE by ID):', error);
-    return NextResponse.json({ error: 'เกิดข้อผิดพลาดในการลบแผน: ' + error.message }, { status: 500 });
+    console.error('API error (DELETE):', error);
+    return NextResponse.json({ error: 'เกิดข้อผิดพลาดในการลบ: ' + error.message }, { status: 500 });
   }
 }
+
+
+

@@ -241,9 +241,9 @@ export default function AuthForm({ isLogin = true }: Props) {
         <button
           type="submit"
           disabled={isSubmitting}
-          className="w-full rounded-md mt-4 bg-blue-600 px-4 py-3 text-lg font-semibold text-white hover:bg-blue-800 disabled:bg-blue-400"
+          className="w-full rounded-md mt-4 bg-gradient-to-tr from-blue-600  bg-cyan-500 px-4 py-3 text-lg font-semibold text-white hover:bg-blue-800 disabled:bg-blue-400"
         >
-          {isSubmitting ? 'กำลังประมวลผล...' : isLogin ? 'เข้าสู่ระบบ' : 'สมัครสมาชิก'}
+          {isSubmitting ? 'กำลังเข้าสู่ระบบ...' : isLogin ? 'เข้าสู่ระบบ' : 'สมัครสมาชิก'}
         </button>
 
         <hr className='mt-6 text-gray-400' />

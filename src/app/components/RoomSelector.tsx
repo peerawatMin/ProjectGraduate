@@ -25,7 +25,7 @@ const RoomDetailsModal: React.FC<RoomDetailsModalProps> = ({ room, onClose }) =>
         <p className="mb-1 text-white"><strong>จำนวนที่นั่งทั้งหมด:</strong> {room.totalSeats}</p>
         {room.description && <p className="mb-4 text-white"><strong>รายละเอียด:</strong> {room.description}</p>}
 
-        <h3 className="text-xl font-semibold mb-3 text-center text-white">รูปแบบแผนผังที่นั่ง</h3>
+        <h3 className="text-md font-semibold mb-3 text-center text-white">รูปแบบแผนผังที่นั่ง</h3>
         <div
           className="grid gap-1 rounded-md p-4 bg-gray-100"
           style={{
@@ -34,6 +34,7 @@ const RoomDetailsModal: React.FC<RoomDetailsModalProps> = ({ room, onClose }) =>
           }}
         >
           {room.seatPattern.customLayout?.map((seat: SeatPosition) => (
+            
             <div
               key={seat.seatNumber}
               className="flex items-center justify-center bg-emerald-500 text-white rounded-md text-xs font-medium aspect-square"

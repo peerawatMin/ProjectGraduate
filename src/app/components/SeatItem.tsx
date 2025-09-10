@@ -1,17 +1,17 @@
 // src/components/SeatItem.tsx
 
 import React from 'react';
-import { SeatPosition as Seat } from '../../types/examTypes'; // ใช้ SeatPosition ตาม type ใหม่
+import { ExamSeat } from '../../types/examTypes';
 
 interface SeatItemProps {
-  seat: Seat;
-  onClick: (seat: Seat) => void;
+  seat: ExamSeat;
+  onClick: (seat: ExamSeat) => void;
   gridRow: number;
   gridCol: number;
 }
 
 export const SeatItem: React.FC<SeatItemProps> = ({ seat, onClick, gridRow, gridCol }) => {
-  const isOccupied = seat.occupied;
+  const isOccupied = !!seat.examiner;
 
   return (
     <div
@@ -28,12 +28,12 @@ export const SeatItem: React.FC<SeatItemProps> = ({ seat, onClick, gridRow, grid
         gridRow: gridRow,
         gridColumn: gridCol
       }}
-      title={isOccupied && seat.examiner ?
-        `ที่นั่ง: ${seat.seatNumber}\nรหัส: ${seat.examiner.examinerid}\nชื่อ: ${seat.examiner.title} ${seat.examiner.firstname} ${seat.examiner.lastname}`
-        : `ที่นั่งว่าง: ${seat.seatNumber}`
+      title={isOccupied && seat.examiner
+        ? `ที่นั่ง: ${seat.seat_number}\nรหัส: ${seat.examiner.examinerid}\nชื่อ: ${seat.examiner.title} ${seat.examiner.firstname} ${seat.examiner.lastname}`
+        : `ที่นั่งว่าง: ${seat.seat_number}`
       }
     >
-      <span className="font-bold text-base">{seat.seatNumber}</span>
+      <span className="font-bold text-base">{seat.seat_number}</span>
       {isOccupied ? (
         <span className="text-xs text-green-700">มีผู้สอบ</span>
       ) : (

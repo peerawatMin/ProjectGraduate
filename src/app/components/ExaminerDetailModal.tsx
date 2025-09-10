@@ -1,39 +1,89 @@
-// src/components/ExaminerDetailsModal.tsx
+'use client';
 
 import React from 'react';
-import { SeatPosition as Seat } from '../../types/examTypes'; // ใช้ SeatPosition ตาม type ใหม่
+import { ExamSeat } from '../../types/examTypes';
 
 interface ExaminerDetailsModalProps {
   isOpen: boolean;
   onClose: () => void;
-  seat: Seat | null; // ส่ง seat object เข้ามา
+  seat: ExamSeat | null;
 }
 
 export const ExaminerDetailsModal: React.FC<ExaminerDetailsModalProps> = ({ isOpen, onClose, seat }) => {
-  if (!isOpen || !seat || !seat.examiner) {
-    return null; // ไม่แสดง Modal ถ้าไม่เปิด หรือไม่มีข้อมูลที่นั่ง/ผู้สอบ
-  }
+  if (!isOpen || !seat || !seat.examiner) return null;
 
-  const { examinerid, title, firstname, lastname } = seat.examiner;
-  const { seatNumber } = seat;
+  const { seat_number, examiner } = seat;
+  const {
+    examinerid,
+    idcardnumber,
+    examinee_number,
+    title,
+    firstname,
+    lastname,
+    gender,
+    phone,
+    email,
+    nationality,
+    specialneeds,
+  } = examiner;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-transparent backdrop-blur-md animate-fade-in">
-      <div className="bg-linear-to-t from-sky-600 to-indigo-700 p-6 items-center rounded-lg shadow-xl max-w-sm w-full mx-4 relative transform scale-95 transition-transform duration-500 ease-out sm:scale-100">
-        <button
-          onClick={onClose}
-          className="absolute top-3 right-3 text-red-500 hover:text-red-700 text-2xl font-bold transition-colors duration-200"
-          aria-label="Close modal"
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 bg-opacity-40 backdrop-blur-md">
+    <div className="bg-gradient-to-br from-indigo-700 via-indigo-600 to-blue-500 text-white p-6 rounded-2xl shadow-2xl max-w-md w-full mx-4 relative animate-fadeIn">
+      {/* ปุ่มปิด */}
+      <button
+        onClick={onClose}
+        className="absolute top-3 right-3 text-gray-500 hover:text-red-600 text-2xl font-bold"
+      >
+        &times;
+      </button>
+
+      {/* Header */}
+      <h3 className="text-xl font-extrabold mb-4 text-center text-white border-b pb-2">
+        ข้อมูลผู้เข้าสอบ
+      </h3>
+
+      {/* เนื้อหา */}
+      <div className="grid grid-cols-[150px_1fr] gap-y-2 text-sm">
+        <span className="font-semibold">เลขที่นั่ง:</span>
+        <span className="font-semibold text-yellow-400">{seat_number}</span>
+
+        <span className="font-semibold">รหัสผู้สอบ:</span>
+        <span className='text-gray-200'>{examinerid}</span>
+
+        <span className="font-semibold">ชื่อ-นามสกุล:</span>
+        <span className='text-gray-200'>{`${title} ${firstname} ${lastname}`}</span>
+
+        <span className="font-semibold">เลขประจำตัวสอบ:</span>
+        <span className='text-gray-200'>{examinee_number || '-'}</span>
+
+        <span className="font-semibold">เลขบัตรประชาชน:</span>
+        <span className='text-gray-200'>{idcardnumber || '-'}</span>
+
+        <span className="font-semibold">เพศ:</span>
+        <span className='text-gray-200'>{gender || '-'}</span>
+
+        <span className="font-semibold">สัญชาติ:</span>
+        <span className='text-gray-200'>{nationality || '-'}</span>
+
+        <span className="font-semibold">เบอร์โทร:</span>
+        <span className='text-gray-200'>{phone || '-'}</span>
+
+        <span className="font-semibold">อีเมล:</span>
+        <span className='text-gray-200'>{email || '-'}</span>
+
+        <span className="font-semibold ">เงื่อนไขพิเศษ:</span>
+        <span
+          className={`italic ${
+            specialneeds ? 'text-yellow-400' : 'text-red-500'
+          }`}
         >
-          &times;
-        </button>
-        <h3 className="text-2xl font-extrabold mb-4 text-white text-center border-b pb-2">ข้อมูลผู้เข้าสอบ</h3>
-        <div className="space-y-3 text-white text-base">
-          <p><strong>ที่นั่ง:</strong> <span className="font-semibold text-yellow-500">{seatNumber}</span></p>
-          <p><strong>รหัสผู้สอบ:</strong> <span className="font-medium">{examinerid}</span></p>
-          <p><strong>ชื่อ-นามสกุล:</strong> <span className="font-medium">{title} {firstname} {lastname}</span></p>
-        </div>
+          {specialneeds || 'ไม่มี'}
+        </span>
+
       </div>
     </div>
-  );
+  </div>
+);
+
 };

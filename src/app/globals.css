@@ -1,38 +1,139 @@
+/* --- Tailwind core --- */
 @import "tailwindcss";
 
+/* --- ค่าเริ่มต้น (Light) --- */
 :root {
+  /* HSL แบบ shadcn */
+  --background-hsl: 0 0% 100%;
+  --foreground-hsl: 240 10% 3.9%;
+  --card: 0 0% 100%;
+  --card-foreground: 240 10% 3.9%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 240 10% 3.9%;
+  --primary: 221 83% 53%;
+  --primary-foreground: 210 40% 98%;
+  --secondary: 240 4.8% 95.9%;
+  --secondary-foreground: 240 5.9% 10%;
+  --muted: 240 4.8% 95.9%;
+  --muted-foreground: 240 3.8% 46.1%;
+  --accent: 240 4.8% 95.9%;
+  --accent-foreground: 240 5.9% 10%;
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 0 0% 98%;
+  --border: 240 5.9% 90%;
+  --input: 240 5.9% 90%;
+  --ring: 221 83% 53%;
+
+  /* HEX/rgba เผื่อใช้ตรง ๆ */
   --background: #ffffff;
   --foreground: #171717;
+
+  --font-geist-sans: ui-sans-serif, system-ui, Arial, Helvetica, sans-serif;
+  --font-geist-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  color-scheme: light dark;
 }
 
+/* --- Tailwind v4 @theme mapping --- */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --color-background: hsl(var(--background-hsl));
+  --color-foreground: hsl(var(--foreground-hsl));
+  --color-primary: hsl(var(--primary));
+  --color-secondary: hsl(var(--secondary));
+  --color-muted: hsl(var(--muted));
+  --color-accent: hsl(var(--accent));
+
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* --- Base reset --- */
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+  font-family: var(--font-geist-sans);
+  color: var(--foreground);
+  scroll-behavior: smooth;
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
-  scroll-behavior: smooth;
-  /* ซ่อน scrollbar ทุก platform */
-  .hide-scrollbar::-webkit-scrollbar {
-    display: none;
-  }
-  .hide-scrollbar {
-    -ms-overflow-style: none; /* IE */
-    scrollbar-width: none; /* Firefox */
-  }
-  /* globals.css หรือไฟล์ CSS อื่นๆ ของคุณ */
+/* --- Utilities --- */
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
 
+.no-spinner::-webkit-outer-spin-button,
+.no-spinner::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.no-spinner {
+  -moz-appearance: textfield;
+}
 
+/* ===== THEME OVERRIDES — วางท้ายไฟล์เสมอ ===== */
+
+/* LIGHT */
+html[data-theme="light"] {
+  --background-hsl: 0 0% 100%;
+  --foreground-hsl: 240 10% 3.9%;
+  color-scheme: light;
+}
+html[data-theme="light"] body {
+  background: hsl(var(--background-hsl));
+}
+
+/* DARK: gradient indigo-900 → blue-700 */
+html[data-theme="dark"] {
+  --background-hsl: 240 10% 3.9%;
+  --foreground-hsl: 0 0% 98%;
+  --card: 240 10% 3.9%;
+  --card-foreground: 0 0% 98%;
+  --popover: 240 10% 3.9%;
+  --popover-foreground: 0 0% 98%;
+  --primary: 217 91% 60%;
+  --primary-foreground: 222.2 47.4% 11.2%;
+  --secondary: 240 3.7% 15.9%;
+  --secondary-foreground: 0 0% 98%;
+  --muted: 240 3.7% 15.9%;
+  --muted-foreground: 240 5% 64.9%;
+  --accent: 240 3.7% 15.9%;
+  --accent-foreground: 0 0% 98%;
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 0 0% 98%;
+  --border: 240 3.7% 15.9%;
+  --input: 240 3.7% 15.9%;
+  --ring: 217 91% 60%;
+
+  --foreground: #e5e7eb;
+  --background: rgba(255, 255, 255, 0.06);
+  color-scheme: dark;
+}
+html[data-theme="dark"] body {
+  background-image: linear-gradient(to top right, #312e81, #1d4ed8);
+  background-color: transparent;
+}
+
+/* SYSTEM: gradient indigo-800 → blue-600 */
+html[data-theme="system"] {
+  --background-hsl: 0 0% 100% / 0.06; /* rgba(255,255,255,0.06) */
+  --foreground-hsl: 0 0% 100%;
+
+  --card: 0 0% 100% / 0.08;
+  --card-foreground: 0 0% 100%;
+  --popover: 240 10% 3.9% / 0.2;
+  --popover-foreground: 0 0% 100%;
+
+  --foreground: #ffffff;
+  --background: rgba(255, 255, 255, 0.06);
+
+  color-scheme: light dark;
+}
+html[data-theme="system"] body {
+  background-image: linear-gradient(to top right, #3730a3, #2563eb);
+  background-color: transparent;
 }

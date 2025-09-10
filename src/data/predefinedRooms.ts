@@ -53,7 +53,7 @@ export const PREDEFINED_ROOMS: ExamRoom[] = [
         
         { gridRow: 2, gridCol: 5, seatNumber: 9, occupied: false }, { gridRow: 2, gridCol: 6, seatNumber: 10, occupied: false }, { gridRow: 2, gridCol: 7, seatNumber: 11, occupied: false }, { gridRow: 2, gridCol: 8, seatNumber: 12, occupied: false }, 
         { gridRow: 2, gridCol: 9, seatNumber: 13, occupied: false },{ gridRow: 2, gridCol: 11, seatNumber: 14, occupied: false }, { gridRow: 2, gridCol: 12, seatNumber: 15, occupied: false }, { gridRow: 2, gridCol: 13, seatNumber: 16, occupied: false }, 
-        { gridRow: 2, gridCol: 14, seatNumber: 177, occupied: false }, { gridRow: 2, gridCol: 15, seatNumber: 18, occupied: false },
+        { gridRow: 2, gridCol: 14, seatNumber: 17, occupied: false }, { gridRow: 2, gridCol: 15, seatNumber: 18, occupied: false },
         
         { gridRow: 3, gridCol: 4, seatNumber: 19, occupied: false }, { gridRow: 3, gridCol: 5, seatNumber: 20, occupied: false }, { gridRow: 3, gridCol: 6, seatNumber: 21, occupied: false }, { gridRow: 3, gridCol: 7, seatNumber: 22, occupied: false }, 
         { gridRow: 3, gridCol: 8, seatNumber: 23, occupied: false }, { gridRow: 3, gridCol: 9, seatNumber: 24, occupied: false }, { gridRow: 3, gridCol: 11, seatNumber: 25, occupied: false }, { gridRow: 3, gridCol: 12, seatNumber: 26, occupied: false }, 
@@ -131,7 +131,7 @@ export const PREDEFINED_ROOMS: ExamRoom[] = [
         { gridRow: 8, gridCol: 5, seatNumber: 33, occupied: false }, { gridRow: 9, gridCol: 5, seatNumber: 34, occupied: false },
 
         { gridRow: 1, gridCol: 7, seatNumber: 35, occupied: false }, { gridRow: 2, gridCol: 7, seatNumber: 36, occupied: false }, { gridRow: 3, gridCol: 7, seatNumber: 37, occupied: false },
-        { gridRow: 4, gridCol: 7, seatNumber: 38, occupied: false }, { gridRow: 5, gridCol: 7, seatNumber: 39, occupied: false }, { gridRow: 6, gridCol: 7, seatNumber: 310, occupied: false },
+        { gridRow: 4, gridCol: 7, seatNumber: 38, occupied: false }, { gridRow: 5, gridCol: 7, seatNumber: 39, occupied: false }, { gridRow: 6, gridCol: 7, seatNumber: 40, occupied: false },
         { gridRow: 7, gridCol: 7, seatNumber: 41, occupied: false }, { gridRow: 8, gridCol: 7, seatNumber: 42, occupied: false }, { gridRow: 9, gridCol: 7, seatNumber: 43, occupied: false },
         { gridRow: 1, gridCol: 8, seatNumber: 44, occupied: false }, { gridRow: 2, gridCol: 8, seatNumber: 45, occupied: false }, { gridRow: 3, gridCol: 8, seatNumber: 46, occupied: false },
         { gridRow: 4, gridCol: 8, seatNumber: 47, occupied: false }, { gridRow: 5, gridCol: 8, seatNumber: 48, occupied: false }, { gridRow: 6, gridCol: 8, seatNumber: 49, occupied: false },

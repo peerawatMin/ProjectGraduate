@@ -1,10 +1,11 @@
-import React from 'react'
-import ExaminerList from '../components/Exam_List'
+// app/page.tsx
+import React from "react";
+import ExaminerList from "../components/Exam_List";
 
-export default function page() {
+export default function Page() {
   return (
-    <>
-    <ExaminerList/>
-    </>
-  )
+    <div className="min-h-screen w-full bg-gray-50">
+      <ExaminerList />
+    </div>
+  );
 }

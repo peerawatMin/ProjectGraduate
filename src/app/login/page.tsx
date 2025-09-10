@@ -5,7 +5,7 @@ import AuthForm from '../components/AuthForm'
 export default function LoginPage() {
   return (
     <main className='flex justify-center items-center p-24 max-h-screen overflow-hidden'>
-      <div className=" opacity-85 p-8 w-[600px] items-center m-8 space-y-6">
+      <div className=" opacity-95 p-8 w-[600px] items-center m-8 space-y-6">
         <div className="flex items-center justify-center">
           <div className="w-full text-center">
           <AuthForm isLogin={true} />

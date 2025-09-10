@@ -9,13 +9,16 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   ExamRoom, ExamRoomAllocation, ExaminerType, SeatPosition,
-  SavedPlan, InsertPlanData, CurrentExamSessionState
+  SavedPlan, ExamSeat, CurrentExamSessionState
 } from '../../types/examTypes'; // ตรวจสอบ path
 import RoomSelector from '../components/RoomSelector'; // ตรวจสอบ path
 import SessionSummary from '../components/SessionSummary'; // ตรวจสอบ path
-import MultiRoomSeatMap from '../components/MultiRoomSeatMap'; // ตรวจสอบ path
+import {MultiRoomSeatMap} from '../components/MultiRoomSeatMap'; // ตรวจสอบ path
 import { RotateCcw } from 'lucide-react';
 import { toast } from 'react-toastify';
+import { Combobox } from './Combobox';
+import { DatePicker } from './DatePicker';
+import { PerfectSlider } from './PerfectSlider';
 
 
 export default function ExamSessionManager() {
@@ -26,7 +29,7 @@ export default function ExamSessionManager() {
   const [currentSession, setCurrentSession] = useState<CurrentExamSessionState | null>(null);
   const [sessionName, setSessionName] = useState('');
   const [sessionDescription, setSessionDescription] = useState('');
-  const [totalExaminees, setTotalExaminees] = useState(0);
+  const [totalExaminees, setTotalExaminees] = useState(50);
   const [selectedRooms, setSelectedRooms] = useState<ExamRoom[]>([]);
   const [examinees, setExaminees] = useState<ExaminerType[]>([]);
   const [roomAllocations, setRoomAllocations] = useState<ExamRoomAllocation[]>([]);
@@ -36,101 +39,247 @@ export default function ExamSessionManager() {
   const [arrangementDirection, setArrangementDirection] = useState<'horizontal' | 'vertical'>('horizontal');
   const [savedPlans, setSavedPlans] = useState<SavedPlan[]>([]);
   const [userId, setUserId] = useState<string>(''); // ในแอปจริงควรได้มาจากระบบ Auth
+  const [examShift, setExamShift] = useState<'morning' | 'afternoon' | ''>('');
+  const [examDate, setExamDate] = useState("")
+  const [examSessions, setExamSessions] = useState<{ session_id: string; session_name: string; exam_date: string; exam_shift: string }[]>([]);
+  const [shift, setShift] = useState("")
 
-  const checkTotalExaminer = async (number:number) =>{
-    
-    if(number <= 0 ){
-      setTotalExaminees(0)
-      
-    }else{
-      setTotalExaminees(number)
-    }
-  }
-    const createExamSession = async () => {
-  if (!sessionName || selectedRooms.length === 0 || totalExaminees === 0 || !userId) {
-    alert('กรุณากรอกชื่อรอบสอบ, จำนวนผู้เข้าสอบ และเลือกห้องสอบ');
+  const sessionOptions = [
+    "สอบครุสภา ครั้งที่ 1",
+    "สอบกลางภาค ครั้งที่ 1",
+    "สอบปลายภาค ครั้งที่ 1",
+    "สอบพิเศษ",
+  ]
+
+  const shiftOptions = ["เช้า 09:00-12:00", "บ่าย 13:00-16:00"]
+ 
+  useEffect(() => {
+    const fetchSessions = async () => {
+      const { data, error } = await supabase
+        .from('exam_session')
+        .select('session_id, session_name, exam_date, exam_shift')
+        .order('exam_date', { ascending: true });
+
+      if (error) return console.error(error);
+      if (data) setExamSessions(data);
+    };
+
+    fetchSessions();
+  }, []);
+
+
+const createExamSession = async () => {
+  if (
+    !sessionName?.trim() ||
+    !examDate ||
+    !examShift ||
+    !selectedRooms || selectedRooms.length === 0 ||
+    Number(totalExaminees) <= 0
+  ) {
+    toast.info('กรุณากรอกข้อมูลครบถ้วน');
     return;
   }
+
+  // --- คำนวณความจุรวม ---
+  const totalCapacity = selectedRooms.reduce(
+    (sum, room) => sum + room.seatPattern.rows * room.seatPattern.cols,
+    0
+  );
 
   if (totalExaminees > totalCapacity) {
-    alert(`จำนวนผู้เข้าสอบ (${totalExaminees}) เกินความจุของห้องสอบที่เลือก (${totalCapacity})`);
+    toast.info(`จำนวนผู้เข้าสอบ (${totalExaminees}) เกินความจุของห้องสอบที่เลือก (${totalCapacity})`);
     return;
   }
 
-  const newSessionId = crypto.randomUUID();
-  const maxRows = selectedRooms.reduce((max, room) => Math.max(max, room.seatPattern.rows), 0);
-  const maxCols = selectedRooms.reduce((max, room) => Math.max(max, room.seatPattern.cols), 0);
-
-  const initialArrangementData: ExamRoomAllocation[] = [];
-
-  const dataToInsert: InsertPlanData = {
-    plan_name: sessionName,
-    seating_pattern: allocationType,
-    room_rows: maxRows,
-    room_cols: maxCols,
-    arrangement_data: initialArrangementData,
-    user_id: userId,
-    exam_count: 0,
-    exam_room_name: selectedRooms.map(room => room.name).join(', '),
-    exam_room_description: sessionDescription,
-    total_examinees: totalExaminees,
-  };
-
   try {
-    // ✅ 1. ดึงข้อมูลผู้เข้าสอบจาก Supabase
-    const { data: examineeData, error } = await supabase
-      .from('examiner') // ← ชื่อ table จริงของคุณ
+    const newSessionId = crypto.randomUUID();
+    const startTime = examShift === 'morning' ? '09:00:00' : '13:00:00';
+    const endTime = examShift === 'morning' ? '12:00:00' : '16:00:00';
+
+    // --- สร้าง Exam Session ---
+    const { data: sessionData, error: sessionError } = await supabase
+      .from('exam_session')
+      .insert([{
+        session_id: newSessionId,
+        session_name: sessionName,
+        exam_date: examDate,
+        exam_shift: examShift,
+        exam_start_time: startTime,
+        exam_end_time: endTime,
+        description: sessionDescription?.trim() || null,
+      }])
+      .select()
+      .single();
+    if (sessionError) throw new Error(sessionError.message);
+
+    // --- ดึงผู้เข้าสอบ ---
+    const { data: examineeDataRaw, error: examineeError } = await supabase
+      .from('examiner')
       .select('*')
-      .order('examinerid', { ascending: true })
-      .limit(totalExaminees);
+      .order('examinerid', { ascending: true });
+    if (examineeError) throw new Error(examineeError.message);
 
-    if (error) throw new Error(`ไม่สามารถดึงข้อมูลผู้เข้าสอบ: ${error.message}`);
-
-    if (!examineeData || examineeData.length < totalExaminees) {
-      alert(`พบผู้เข้าสอบในระบบเพียง ${examineeData?.length || 0} คนจาก ${totalExaminees}`);
+    if (!examineeDataRaw || examineeDataRaw.length < totalExaminees) {
+      toast.info(`พบผู้เข้าสอบในระบบเพียง ${examineeDataRaw?.length || 0} คน`);
       return;
     }
 
-    // ✅ 2. บันทึก Plan ลง backend
-    const response = await fetch(`/api/seating-plans/${newSessionId}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(dataToInsert),
-    });
+    // --- จัดเรียงผู้เข้าสอบตามการเลือก ---
+    let arrangedExaminees = [...examineeDataRaw].slice(0, totalExaminees);
 
-    if (!response.ok) {
-      const errorBody = await response.text();
-      throw new Error(`HTTP error! status: ${response.status}, Body: ${errorBody.substring(0, 200)}...`);
+    // ฟังก์ชัน shuffle (Fisher-Yates)
+    function shuffleArray(array: any[]) {
+      for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+      }
+      return array;
     }
 
-    const result = await response.json();
-    const savedData = result.data as SavedPlan;
+    if (allocationType === 'sequential') {
+      // ✅ เรียงตามลำดับตัวเลขจริง
+      arrangedExaminees.sort((a, b) => Number(a.examinerid) - Number(b.examinerid));
+    } else if (allocationType === 'random') {
+      // ✅ สุ่มจริง ๆ
+      arrangedExaminees = shuffleArray(arrangedExaminees);
+    }
 
-    // ✅ 3. เซฟ examinees ที่ดึงจาก DB เข้า state
-    setExaminees(examineeData);
+    // --- สร้าง Seating Plan ---
+    const newPlanId = crypto.randomUUID();
+    const maxRows = selectedRooms.reduce((max, room) => Math.max(max, room.seatPattern.rows), 0);
+    const maxCols = selectedRooms.reduce((max, room) => Math.max(max, room.seatPattern.cols), 0);
 
-    // ✅ 4. สร้าง session ตามปกติ
+    const { data: planData, error: planError } = await supabase
+      .from('seating_plans')
+      .insert([{
+        seatpid: newPlanId,
+        session_id: newSessionId,
+        plan_name: sessionName,
+        seating_pattern: allocationType,
+        room_rows: maxRows,
+        room_cols: maxCols,
+        arrangement_data: [],
+        exam_count: 0,
+        exam_room_name: selectedRooms.map(r => r.name).join(', '),
+        exam_room_description: sessionDescription,
+        total_examinees: totalExaminees,
+      }])
+      .select()
+      .single();
+    if (planError) throw new Error(planError.message);
+
+    // --- แจก Seat Assignment + Layout ---
+    const seatAssignments: any[] = [];
+    const arrangementData: any[] = [];
+    let examineeIndex = 0;
+    let seatNumber = 1; // ✅ นับเลขที่นั่งรวมต่อเนื่องข้ามห้อง
+
+    for (const room of selectedRooms) {
+      const roomSeats: (string | null)[][] = Array.from(
+        { length: room.seatPattern.rows },
+        () => Array.from({ length: room.seatPattern.cols }, () => null)
+      );
+
+      if (arrangementDirection === 'horizontal') {
+        for (let r = 0; r < room.seatPattern.rows; r++) {
+          for (let c = 0; c < room.seatPattern.cols; c++) {
+            if (examineeIndex >= arrangedExaminees.length) break;
+            const examinee = arrangedExaminees[examineeIndex];
+
+            roomSeats[r][c] = examinee.examinerid;
+            seatAssignments.push({
+              session_id: newSessionId,
+              seatplan_id: planData.seatpid,
+              room_id: room.id,
+              examiner_id: examinee.examinerid,
+              seat_row: r + 1,
+              seat_col: c + 1,
+              seat_number: seatNumber,
+            });
+
+            examineeIndex++;
+            seatNumber++;
+          }
+        }
+      } else {
+        for (let c = 0; c < room.seatPattern.cols; c++) {
+          for (let r = 0; r < room.seatPattern.rows; r++) {
+            if (examineeIndex >= arrangedExaminees.length) break;
+            const examinee = arrangedExaminees[examineeIndex];
+
+            roomSeats[r][c] = examinee.examinerid;
+            seatAssignments.push({
+              session_id: newSessionId,
+              seatplan_id: planData.seatpid,
+              room_id: room.id,
+              examiner_id: examinee.examinerid,
+              seat_row: r + 1,
+              seat_col: c + 1,
+              seat_number: seatNumber,
+            });
+
+            examineeIndex++;
+            seatNumber++;
+          }
+        }
+      }
+
+      arrangementData.push({
+        roomId: room.id,
+        roomName: room.name,
+        rows: room.seatPattern.rows,
+        cols: room.seatPattern.cols,
+        seats: roomSeats,
+      });
+    }
+
+    // --- บันทึก Seat Assignment ---
+    if (seatAssignments.length > 0) {
+      const { error: seatError } = await supabase
+        .from('seat_assignment')
+        .insert(seatAssignments);
+      if (seatError) throw new Error(seatError.message);
+    }
+
+    // --- อัปเดต Seating Plan ---
+    const { data: updatedPlan, error: updatePlanError } = await supabase
+      .from('seating_plans')
+      .update({
+        arrangement_data: arrangementData,
+        exam_count: examineeIndex,
+      })
+      .eq('seatpid', planData.seatpid)
+      .select()
+      .single();
+    if (updatePlanError) throw new Error(updatePlanError.message);
+
+    // --- อัปเดต UI ---
+    setExaminees(arrangedExaminees);
     setCurrentSession({
-      id: savedData.seatpid,
-      name: savedData.plan_name,
-      description: savedData.exam_room_description || undefined,
-      totalExaminees: savedData.total_examinees,
-      rooms: [],
-      createdAt: new Date(savedData.created_at),
-      updatedAt: new Date(savedData.updated_at || savedData.created_at),
-      seatingPattern: savedData.seating_pattern as CurrentExamSessionState['seatingPattern'],
-      roomDimensions: { rows: savedData.room_rows, cols: savedData.room_cols },
-      exam_count: savedData.exam_count,
-      examRoomName: savedData.exam_room_name || undefined,
-      examRoomDescription: savedData.exam_room_description || undefined,
+      id: newPlanId,
+      sessionId: newSessionId,
+      name: sessionName,
+      description: sessionDescription || undefined,
+      totalExaminees,
+      rooms: roomAllocations,
+      seatingPattern: allocationType,
+      roomDimensions: { rows: maxRows, cols: maxCols },
+      exam_count: examineeIndex,
+      examRoomName: selectedRooms.map(r => r.name).join(', '),
+      examRoomDescription: sessionDescription,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      examDate,
+      examShift,
+      examStartTime: startTime,
+      examEndTime: endTime,
     });
 
     setIsSessionActive(true);
-    toast.success('สร้างรอบสอบสำเร็จ!');
-    fetchSavedPlans();
+    toast.success('สร้างรอบสอบและบันทึกที่นั่งสำเร็จ!');
   } catch (error: any) {
     console.error('Error creating session:', error);
-    toast.error('เกิดข้อผิดพลาดในการสร้างรอบสอบ: ' + error.message);
+    toast.error('เกิดข้อผิดพลาด: ' + error.message);
   }
 };
 
@@ -164,28 +313,6 @@ export default function ExamSessionManager() {
     return selectedRooms.reduce((sum, room) => sum + room.totalSeats, 0);
   }, [selectedRooms]);
 
-  // --- Helper Functions ---
-  const generateDummyExaminees = useCallback((count: number): ExaminerType[] => {
-    const dummyData: ExaminerType[] = [];
-    for (let i = 1; i <= count; i++) {
-      dummyData.push({
-        examinerid: 1000 + i,
-        idcardnumber: `123456789012${i.toString().padStart(2, '0')}`,
-        title: i % 2 === 0 ? 'นาย' : 'นางสาว',
-        firstname: `ผู้เข้าสอบ${i}`,
-        lastname: `นามสกุล${i}`,
-        gender: i % 2 === 0 ? 'ชาย' : 'หญิง',
-        phone: `081-123-45${i.toString().padStart(2, '0')}`,
-        email: `examinee${i}@example.com`,
-        specialneeds: i % 5 === 0 ? 'ต้องการความช่วยเหลือพิเศษ' : null,
-        nationality: 'ไทย',
-        titleeng: i % 2 === 0 ? 'Mr.' : 'Mrs.',
-        firstnameeng: `FirstName${i}`,
-        lastnameeng: `LastName${i}`
-      });
-    }
-    return dummyData;
-  }, []);
 
   const generateSeatArrangement = useCallback((room: ExamRoom, examineesForRoom: ExaminerType[], direction: 'horizontal' | 'vertical'): SeatPosition[] => {
     const arrangement: SeatPosition[] = [];
@@ -243,48 +370,60 @@ export default function ExamSessionManager() {
     return arrangement;
   }, []);
 
-  const allocateExamineesToRooms = useCallback(() => {
-    if (examinees.length === 0 || selectedRooms.length === 0) {
-      setRoomAllocations([]);
-      return;
-    }
-
-    let examineesToAllocate = [...examinees];
-    if (allocationType === 'random') {
-      for (let i = examineesToAllocate.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [examineesToAllocate[i], examineesToAllocate[j]] = [examineesToAllocate[j], examineesToAllocate[i]];
+    const allocateExamineesToRooms = useCallback(() => {
+      if (examinees.length === 0 || selectedRooms.length === 0) {
+        setRoomAllocations([]);
+        return;
       }
-    }
 
-    const allocations: ExamRoomAllocation[] = [];
-    let currentExamineeIndex = 0;
+      // สร้างสำเนาผู้เข้าสอบ
+      let examineesToAllocate = [...examinees];
 
-    // --- MODIFICATION STARTS HERE ---
-    // Sort selected rooms by their ID (ascending) for consistent allocation order
-    const sortedSelectedRooms = [...selectedRooms].sort((a, b) => a.id.localeCompare(b.id));
-    // --- MODIFICATION ENDS HERE ---
-
-    sortedSelectedRooms.forEach(room => {
-      const roomExaminees: ExaminerType[] = [];
-      const availableSeatsInRoom = room.totalSeats;
-      const examineesForThisRoom = Math.min(availableSeatsInRoom, examineesToAllocate.length - currentExamineeIndex);
-
-      for (let i = 0; i < examineesForThisRoom; i++) {
-        roomExaminees.push(examineesToAllocate[currentExamineeIndex + i]);
+      // สุ่มถ้า allocationType เป็น 'random'
+      if (allocationType === 'random') {
+        for (let i = examineesToAllocate.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [examineesToAllocate[i], examineesToAllocate[j]] = [examineesToAllocate[j], examineesToAllocate[i]];
+        }
       }
-      currentExamineeIndex += examineesForThisRoom;
 
-      allocations.push({
-        room,
-        allocatedSeats: roomExaminees.length,
-        examinees: roomExaminees,
-        seatArrangement: generateSeatArrangement(room, roomExaminees, arrangementDirection)
+      const allocations: ExamRoomAllocation[] = [];
+      let currentExamineeIndex = 0;
+
+      // จัดเรียงห้องตาม ID เพื่อให้ allocation สม่ำเสมอ
+      const sortedSelectedRooms = [...selectedRooms].sort((a, b) => a.id.localeCompare(b.id));
+
+      sortedSelectedRooms.forEach(room => {
+        const roomExaminees: ExaminerType[] = [];
+        const availableSeatsInRoom = room.totalSeats;
+        const examineesForThisRoom = Math.min(availableSeatsInRoom, examineesToAllocate.length - currentExamineeIndex);
+
+        for (let i = 0; i < examineesForThisRoom; i++) {
+          roomExaminees.push(examineesToAllocate[currentExamineeIndex + i]);
+        }
+        currentExamineeIndex += examineesForThisRoom;
+
+        // แปลง seatArrangement เป็น ExamSeat[] และแก้ undefined → null
+        const seatArrangement: ExamSeat[] = generateSeatArrangement(room, roomExaminees, arrangementDirection).map(
+          (seat, index) => ({
+            ...seat,
+            seat_number: index + 1,
+            examiner: seat.examiner ?? null  // แปลง undefined → null
+          })
+        );
+
+        allocations.push({
+          room,
+          allocatedSeats: roomExaminees.length,
+          examinees: roomExaminees,
+          seatArrangement
+        });
       });
-    });
 
-    setRoomAllocations(allocations);
-  }, [examinees, selectedRooms, allocationType, arrangementDirection, generateSeatArrangement]);
+      setRoomAllocations(allocations);
+    }, [examinees, selectedRooms, allocationType, arrangementDirection, generateSeatArrangement]);
+
+
 
   // --- API Interaction Functions ---
 
@@ -311,88 +450,15 @@ export default function ExamSessionManager() {
     }
   }, [userId]);
 
-  const createExamSessionDummy = async () => {
-    if (!sessionName || selectedRooms.length === 0 || totalExaminees === 0 || !userId) {
-      toast.info('กรุณากรอกชื่อรอบสอบ, จำนวนผู้เข้าสอบ และเลือกห้องสอบ');
-      return;
-    }
-
-    if (totalExaminees > totalCapacity) {
-      toast.info(`จำนวนผู้เข้าสอบ (${totalExaminees}) เกินความจุของห้องสอบที่เลือก (${totalCapacity})`);
-      return;
-    }
-
-    const newSessionId = crypto.randomUUID();
-    const maxRows = selectedRooms.reduce((max, room) => Math.max(max, room.seatPattern.rows), 0);
-    const maxCols = selectedRooms.reduce((max, room) => Math.max(max, room.seatPattern.cols), 0);
-
-    const initialArrangementData: ExamRoomAllocation[] = [];
-
-    const dataToInsert: InsertPlanData = {
-      plan_name: sessionName,
-      seating_pattern: allocationType, // ตรงนี้จะใช้ค่าที่เลือกจาก Radio button (sequential, random, custom_layout)
-      room_rows: maxRows,
-      room_cols: maxCols,
-      arrangement_data: initialArrangementData,
-      user_id: userId,
-      exam_count: 0,
-      exam_room_name: selectedRooms.map(room => room.name).join(', '),
-      exam_room_description: sessionDescription,
-      total_examinees: totalExaminees,
-    };
-
-    try {
-      const response = await fetch(`/api/seating-plans/${newSessionId}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(dataToInsert),
-      });
-
-      // แก้ไข: ตรวจสอบ response.ok ก่อนเรียก response.json()
-      if (!response.ok) {
-        const errorBody = await response.text();
-        throw new Error(`HTTP error! status: ${response.status}, Body: ${errorBody.substring(0, 200)}...`);
-      }
-
-      const result = await response.json();
-
-      const savedData = result.data as SavedPlan;
-      const generatedExaminees = generateDummyExaminees(totalExaminees);
-      setExaminees(generatedExaminees);
-
-      setCurrentSession({
-        id: savedData.seatpid,
-        name: savedData.plan_name,
-        description: savedData.exam_room_description || undefined,
-        totalExaminees: savedData.total_examinees,
-        rooms: [],
-        createdAt: new Date(savedData.created_at),
-        updatedAt: new Date(savedData.updated_at || savedData.created_at), // จัดการ updated_at ที่อาจเป็น null
-        seatingPattern: savedData.seating_pattern as CurrentExamSessionState['seatingPattern'], // Cast เพื่อให้ตรง Type
-        roomDimensions: { rows: savedData.room_rows, cols: savedData.room_cols },
-        exam_count: savedData.exam_count,
-        examRoomName: savedData.exam_room_name || undefined,
-        examRoomDescription: savedData.exam_room_description || undefined,
-      });
-      setIsSessionActive(true);
-      toast.success('สร้างรอบสอบสำเร็จ!');
-      fetchSavedPlans();
-    } catch (error: any) {
-      console.error('Error creating session:', error);
-      toast.error('เกิดข้อผิดพลาดในการสร้างรอบสอบ: ' + (error as Error).message);
-    }
-  };
-
-  const saveExamSession = async () => {
+    const saveExamSession = async () => {
     if (!currentSession || !currentSession.id || roomAllocations.length === 0 || !userId) {
-      alert('ไม่มีรอบสอบที่ใช้งานอยู่ หรือไม่มี ID รอบสอบที่จะบันทึก, หรือยังไม่ได้จัดที่นั่ง');
+      toast.info('ไม่มีรอบสอบที่ใช้งานอยู่ หรือยังไม่ได้จัดที่นั่ง');
       return;
     }
 
     const sessionToUpdate: SavedPlan = {
       seatpid: currentSession.id,
+      session_id: currentSession.sessionId,
       plan_name: currentSession.name,
       seating_pattern: currentSession.seatingPattern === 'custom_layout' ? 'custom_layout' : currentSession.seatingPattern,
       room_rows: currentSession.roomDimensions?.rows || 0,
@@ -400,138 +466,39 @@ export default function ExamSessionManager() {
       arrangement_data: roomAllocations,
       created_at: currentSession.createdAt.toISOString(),
       updated_at: new Date().toISOString(),
-      user_id: userId,
       exam_count: examinees.length,
       exam_room_name: currentSession.examRoomName || selectedRooms.map(room => room.name).join(', '),
       exam_room_description: currentSession.description || sessionDescription,
       total_examinees: currentSession.totalExaminees,
+      user_id: null
     };
 
     try {
-      // แก้ไข URL: เปลี่ยนจาก /api/saved-plans เป็น /api/seating-plans
       const response = await fetch(`/api/seating-plans/${currentSession.id}`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(sessionToUpdate),
       });
 
-      // แก้ไข: ตรวจสอบ response.ok ก่อนเรียก response.json()
-      if (!response.ok) {
-        const errorBody = await response.text();
-        throw new Error(`HTTP error! status: ${response.status}, Body: ${errorBody.substring(0, 200)}...`);
-      }
-
       const result = await response.json();
 
-      console.log('บันทึกรอบสอบสำเร็จ!', result.data);
-      toast.success('บันทึกรอบสอบสำเร็จ!');
+      if (!response.ok) {
+        throw new Error(result.error || 'ไม่สามารถบันทึกได้');
+      }
+
+      // แสดง toast ตาม message จาก API
+      toast.success(result.message || 'บันทึกรอบสอบสำเร็จ!');
+
+      console.log('Save result:', result.data);
       fetchSavedPlans();
       router.push(`/exam-dashboard`);
     } catch (error: any) {
       console.error('Error saving session:', error);
-      toast.error('เกิดข้อผิดพลาดในการบันทึก: ' + (error as Error).message);
+      toast.error('เกิดข้อผิดพลาดในการบันทึก: ' + error.message);
     }
   };
 
-  const loadExamSession = async (planId: string) => {
-    if (!planId) return;
 
-    try {
-      const response = await fetch(`/api/seating-plans/${planId}`);
-      // แก้ไข: ตรวจสอบ response.ok ก่อนเรียก response.json()
-      if (!response.ok) {
-        const errorBody = await response.text();
-        throw new Error(`HTTP error! status: ${response.status}, Body: ${errorBody.substring(0, 200)}...`);
-      }
-
-      const result = await response.json();
-
-      const loadedPlan: SavedPlan = result;
-
-      const uniqueRooms: ExamRoom[] = [];
-      loadedPlan.arrangement_data.forEach(alloc => {
-        if (!uniqueRooms.some(r => r.id === alloc.room.id)) {
-          uniqueRooms.push(alloc.room);
-        }
-      });
-
-      const allExaminees: ExaminerType[] = [];
-      loadedPlan.arrangement_data.forEach(alloc => {
-        alloc.seatArrangement.forEach(seat => {
-          if (seat.examiner) {
-            allExaminees.push(seat.examiner);
-          }
-        });
-      });
-
-      setSessionName(loadedPlan.plan_name);
-      setSessionDescription(loadedPlan.exam_room_description || '');
-      setTotalExaminees(loadedPlan.total_examinees);
-      setSelectedRooms(uniqueRooms);
-      setExaminees(allExaminees);
-      setRoomAllocations(loadedPlan.arrangement_data);
-
-      // Logic เพื่อตั้งค่า allocationType ให้ตรงกับที่ UI คาดหวัง
-      const dbSeatingPattern = loadedPlan.seating_pattern;
-      if (dbSeatingPattern === 'sequential' || dbSeatingPattern === 'random') {
-        setAllocationType(dbSeatingPattern);
-      } else {
-        setAllocationType('custom_layout'); // ถือว่าเป็นรูปแบบที่กำหนดเอง (เช่น single_row, zigzag)
-      }
-
-      setArrangementDirection('horizontal'); // หรือต้องบันทึก direction ด้วยถ้าสำคัญ
-
-      setCurrentSession({
-        id: loadedPlan.seatpid,
-        name: loadedPlan.plan_name,
-        description: loadedPlan.exam_room_description || undefined,
-        totalExaminees: loadedPlan.total_examinees,
-        rooms: loadedPlan.arrangement_data,
-        createdAt: new Date(loadedPlan.created_at),
-        updatedAt: new Date(loadedPlan.updated_at || loadedPlan.created_at), // แก้ไข: จัดการ updated_at ที่อาจเป็น null
-        seatingPattern: loadedPlan.seating_pattern as CurrentExamSessionState['seatingPattern'], // แก้ไข: Cast Type
-        roomDimensions: { rows: loadedPlan.room_rows, cols: loadedPlan.room_cols },
-        exam_count: loadedPlan.exam_count,
-        examRoomName: loadedPlan.exam_room_name || undefined,
-        examRoomDescription: loadedPlan.exam_room_description || undefined,
-      });
-
-      setIsSessionActive(true);
-      toast.success('โหลดรอบสอบสำเร็จ!');
-    } catch (error: any) {
-      console.error('Error loading session:', error);
-      toast.error('เกิดข้อผิดพลาดในการโหลดรอบสอบ: ' + (error as Error).message);
-    }
-  };
-
-  const deleteExamSession = async (planId: string) => {
-    if (!planId) return;
-
-    try {
-      const response = await fetch(`/api/seating-plans/${planId}`, {
-        method: 'DELETE',
-      });
-
-      // แก้ไข: ตรวจสอบ response.ok ก่อนเรียก response.json()
-      if (!response.ok) {
-        const errorBody = await response.text();
-        throw new Error(`HTTP error! status: ${response.status}, Body: ${errorBody.substring(0, 200)}...`);
-      }
-
-      const result = await response.json();
-
-      toast.success('ลบแผนที่นั่งสำเร็จ!');
-      fetchSavedPlans();
-      if (currentSession && currentSession.id === planId) {
-        resetSession();
-      }
-    } catch (error: any) {
-      console.error('Error deleting plan:', error);
-      toast.error('เกิดข้อผิดพลาดในการลบแผน: ' + (error as Error).message);
-    }
-  };
 
   // --- Session Management ---
   const resetSession = useCallback(() => {
@@ -596,56 +563,64 @@ export default function ExamSessionManager() {
                   <RotateCcw/>
                 </button>
               </div>
-              <div className="space-y-4">
-                <div className='flex justify-around'>
-                  <div>
-                    <label htmlFor="sessionName" className="block text-sm font-medium text-white mb-2">
-                      ชื่อรอบสอบ *
-                    </label>
-                    <input
-                      type="text"
-                      id="sessionName"
-                      value={sessionName}
-                      onChange={(e) => setSessionName(e.target.value)}
-                      className="w-full p-3 border border-gray-200 text-white bg-transparent rounded-lg focus:ring-2 focus:ring-blue-500"
-                      placeholder="เช่น สอบครุสภา ครั้งที่ 1"
+              <div className="space-y-6 p-4">
+                {/* ชื่อรอบสอบ, จำนวนผู้เข้าสอบ, รอบสอบ */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <Combobox
+                    label="ชื่อรอบสอบ *"
+                    placeholder="เลือกหรือกรอกชื่อรอบสอบ"
+                    options={sessionOptions}
+                    value={sessionName}
+                    onChange={setSessionName}
+                  />
+
+                    <PerfectSlider
+                      label="จำนวนผู้เข้าสอบทั้งหมด"
+                      min={0}
+                      max={300}
+                      step={1}
+                      value={totalExaminees}
+                      onChange={(val) => setTotalExaminees(val)}
                     />
-                  </div>
-                  <div>
-                    <label htmlFor="totalExaminees" className="block text-sm font-medium text-white mb-2">
-                      จำนวนผู้เข้าสอบทั้งหมด
-                    </label>
-                    <input
-                      type="number"
-                      id="totalExaminees"
-                      value={totalExaminees === 0 ? '' : totalExaminees}
-                      onChange={(e) => { 
-                        const value = e.target.value;
-                        checkTotalExaminer(value ? Number(value) : 0);
-                      }}
-                      className="w-full p-3 border bg-transparent text-white border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                      placeholder="เช่น 20, 50"
-                    />
-                  </div>
-                </div>
-                <div className='items-center mx-4'>
-                  <label htmlFor="sessionDescription" className="block text-sm font-medium text-white mb-2">
-                    คำอธิบาย
-                  </label>
-                  <textarea
-                    id="sessionDescription"
-                    value={sessionDescription}
-                    onChange={(e) => setSessionDescription(e.target.value)}
-                    className="w-full p-3 border border-gray-300 text-white rounded-lg focus:ring-1 focus:ring-blue-500 h-20 focus:border-yellow-500"
-                    placeholder="รายละเอียดเพิ่มเติมเกี่ยวกับรอบสอบ"
+                  <Combobox
+                    label="รอบสอบ *"
+                    placeholder="เลือกหรือกรอกเวลา"
+                    options={shiftOptions}
+                    value={examShift}
+                    onChange={(val) => {
+                      // map string label → value
+                      if (val.includes("เช้า")) setExamShift("morning");
+                      else if (val.includes("บ่าย")) setExamShift("afternoon");
+                      else setExamShift("");
+                    }}
+                  />
+
+
+                  <DatePicker
+                    label="เลือกวันที่สอบ"
+                    value={examDate}
+                    onChange={setExamDate}
                   />
                 </div>
-                <div className="flex justify-around">
+
+                {/* คำอธิบาย */}
+                <div>
+                  <label className="block text-sm font-medium text-white mb-2">คำอธิบาย</label>
+                  <textarea
+                    value={sessionDescription}
+                    onChange={(e) => setSessionDescription(e.target.value)}
+                    placeholder="รายละเอียดเพิ่มเติมเกี่ยวกับรอบสอบ"
+                    className="w-full p-3 border border-gray-300 rounded-lg bg-transparent outline-none focus:border-blue-500 text-white focus:ring-2 focus:ring-blue-500 h-20"
+                  />
+                </div>
+
+                {/* รูปแบบการจัดที่นั่ง + ทิศทางการจัดเรียง */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 justify-around">
                   <div>
                     <label className="block text-sm font-medium text-white mb-2">
                       รูปแบบการจัดที่นั่ง
                     </label>
-                    <div className="flex space-x-4">
+                    <div className="flex flex-col md:flex-row md:space-x-4 space-y-2 md:space-y-0">
                       <label className="inline-flex items-center">
                         <input
                           type="radio"
@@ -668,7 +643,6 @@ export default function ExamSessionManager() {
                         />
                         <span className="ml-2 text-white">สุ่ม</span>
                       </label>
-                      {/* เพิ่ม radio สำหรับ custom_layout ถ้าต้องการให้ผู้ใช้เลือกเอง */}
                       {allocationType === 'custom_layout' && (
                         <label className="inline-flex items-center">
                           <input
@@ -685,11 +659,12 @@ export default function ExamSessionManager() {
                       )}
                     </div>
                   </div>
+
                   <div>
                     <label className="block text-sm font-medium text-white mb-2">
                       ทิศทางการจัดเรียง
                     </label>
-                    <div className="flex space-x-4">
+                    <div className="flex flex-col md:flex-row md:space-x-4 space-y-2 md:space-y-0">
                       <label className="inline-flex items-center">
                         <input
                           type="radio"
@@ -699,7 +674,7 @@ export default function ExamSessionManager() {
                           checked={arrangementDirection === 'horizontal'}
                           onChange={() => setArrangementDirection('horizontal')}
                         />
-                        <span className="ml-2 text-white">แนวนอน (แถว)</span>
+                        <span className="ml-2 text-white">แนวนอน</span>
                       </label>
                       <label className="inline-flex items-center">
                         <input
@@ -710,41 +685,35 @@ export default function ExamSessionManager() {
                           checked={arrangementDirection === 'vertical'}
                           onChange={() => setArrangementDirection('vertical')}
                         />
-                        <span className="ml-2 text-white">แนวตั้ง (คอลัมน์)</span>
+                        <span className="ml-2 text-white">แนวตั้ง</span>
                       </label>
                     </div>
                   </div>
                 </div>
-                <div className="flex justify-around p-2">
-                  <p className="text-sm text-yellow-500">
-                    <strong>ความจุรวม:</strong> {totalCapacity} ที่นั่ง
-                  </p>
-                  <p className="text-sm text-yellow-500">
-                    <strong>ที่นั่งที่เลือก:</strong> {selectedRooms.length} ห้อง
-                  </p>
+
+                {/* ความจุและห้อง */}
+                <div className="flex flex-col md:flex-row justify-around text-yellow-400 text-sm gap-2">
+                  <p><strong>ที่นั่งทั้งหมด :</strong> {totalCapacity} ที่นั่ง</p>
+                  <p><strong>จำนวนห้อง :</strong> {selectedRooms.length} ห้อง</p>
                   {totalCapacity < totalExaminees && (
-                    <p className="text-sm text-red-700 ml-2">
-                      ⚠️ ความจุไม่เพียงพอ ต้องการเพิ่มอีก {totalExaminees - totalCapacity} ที่นั่ง
+                    <p className="text-red-600">
+                      ⚠️ ที่นั่งไม่เพียงพอ ต้องการเพิ่ม : {totalExaminees - totalCapacity} ที่นั่ง
                     </p>
                   )}
                 </div>
-                <div className="flex justify-center mt-2 items-center">
-                  <button
-                    onClick={createExamSessionDummy}
-                    disabled={!sessionName || selectedRooms.length === 0 || totalExaminees === 0}
-                    className="px-6 py-3 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 disabled:bg-gray-400 disabled:cursor-not-allowed font-medium shadow-md hover:shadow-lg transition-shadow"
-                  >
-                    จำลองสร้างที่นั่งสอบ
-                  </button>
+
+                {/* ปุ่มสร้างรอบสอบ */}
+                <div className="flex flex-col md:flex-row justify-center space-y-2 md:space-y-0 md:space-x-4 mt-4">
                   <button
                     onClick={createExamSession}
                     disabled={!sessionName || selectedRooms.length === 0 || totalExaminees === 0}
-                    className="px-6 py-3 ml-6 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed font-medium shadow-md hover:shadow-lg transition-shadow"
+                    className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed font-medium shadow-md hover:shadow-lg transition-shadow"
                   >
                     {loading ? 'กำลังโหลด...' : 'จัดที่นั่งสอบ'}
                   </button>
                 </div>
               </div>
+
             </div>
             <RoomSelector
               //availableRooms={PREDEFINED_ROOMS}

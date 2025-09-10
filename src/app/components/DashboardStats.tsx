@@ -16,7 +16,7 @@ const supabase = createClient(
 export default function DashboardStats() {
   const searchParams = useSearchParams();
   const tablesParam = searchParams.get('tables');
-  const tables = tablesParam ? tablesParam.split(',') : ['exam_rooms','examiner','seating_plans','examsession'];
+  const tables = tablesParam ? tablesParam.split(',') : ['exam_rooms','examiner','seating_plans','seat_assignment'];
 
   const [stats, setStats] = useState<Record<string, number>>({});
 
@@ -63,10 +63,10 @@ export default function DashboardStats() {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 1 }}
     >
-      {tables.includes('exam_rooms') && <StatCard name="Exam Rooms" icon={School} value={(stats.exam_rooms || 0).toLocaleString()} />}
-      {tables.includes('examiner') && <StatCard name="Examiners" icon={User} value={(stats.examiner || 0).toLocaleString()} />}
-      {tables.includes('seating_plans') && <StatCard name="Seating Plans" icon={Armchair} value={(stats.seating_plans || 0).toLocaleString()} />}
-      {tables.includes('examsession') && <StatCard name="Exam Sessions" icon={CalendarRange} value={(stats.examsession || 0).toLocaleString()} />}
+      {tables.includes('exam_rooms') && <StatCard name="จำนวนห้องสอบ" icon={School} value={(stats.exam_rooms || 0).toLocaleString()} />}
+      {tables.includes('examiner') && <StatCard name="จำนวนผู้สอบ" icon={User} value={(stats.examiner || 0).toLocaleString()} />}
+      {tables.includes('seating_plans') && <StatCard name="จำนวนแผนที่นั่งสอบ" icon={Armchair} value={(stats.seating_plans || 0).toLocaleString()} />}
+      {tables.includes('seat_assignment') && <StatCard name="ผู้สอบที่จัดที่นั่งแล้ว" icon={CalendarRange} value={(stats.seat_assignment || 0).toLocaleString()} />}
     </motion.div>
   );
 }
