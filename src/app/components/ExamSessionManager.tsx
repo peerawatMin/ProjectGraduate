@@ -67,6 +67,14 @@ export default function ExamSessionManager() {
     fetchSessions();
   }, []);
 
+
+  const safeJson = async (resp: Response) => {
+    const ct = resp.headers.get('content-type') || '';
+    if (ct.includes('application/json')) return resp.json();
+    const text = await resp.text();
+    return { error: text || `HTTP ${resp.status}` };
+  };
+
 const createExamSession = async () => {
   if (
     !sessionName?.trim() ||
