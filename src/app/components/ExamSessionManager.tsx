@@ -68,12 +68,26 @@ export default function ExamSessionManager() {
   }, []);
 
 
-  const safeJson = async (resp: Response) => {
-    const ct = resp.headers.get('content-type') || '';
-    if (ct.includes('application/json')) return resp.json();
-    const text = await resp.text();
-    return { error: text || `HTTP ${resp.status}` };
-  };
+const safeJson = async (resp: Response) => {
+  const ct = resp.headers.get('content-type') || '';
+  console.log('Response status:', resp.status);
+  console.log('Response content-type:', ct);
+  
+  if (ct.includes('application/json')) {
+    try {
+      return await resp.json();
+    } catch (jsonError) {
+      console.error('JSON parsing failed, getting text instead:', jsonError);
+      const text = await resp.text();
+      console.log('Response text:', text);
+      return { error: text || `HTTP ${resp.status}` };
+    }
+  }
+  
+  const text = await resp.text();
+  console.log('Non-JSON response text:', text);
+  return { error: text || `HTTP ${resp.status}` };
+};
 
 const createExamSession = async () => {
   if (
@@ -104,6 +118,15 @@ const createExamSession = async () => {
     const endTime   = examShift === 'morning' ? '12:00:00' : '16:00:00';
 
     // 3) สร้างรอบสอบ (server จะ gen session_id และส่งกลับ)
+    console.log('Creating exam session with data:', {
+      session_name: sessionName,
+      exam_date: examDate,
+      exam_shift: examShift,
+      exam_start_time: startTime,
+      exam_end_time: endTime,
+      description: sessionDescription?.trim() || null,
+    });
+
     const createSessionRes = await fetch('/api/exam-session', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -116,25 +139,43 @@ const createExamSession = async () => {
         description: sessionDescription?.trim() || null,
       }),
     });
-    const createSessionJson = await createSessionRes.json();
-    if (!createSessionRes.ok) throw new Error(createSessionJson?.error || 'สร้างรอบสอบไม่สำเร็จ');
-    const createdSession = createSessionJson.data as {
-      session_id: string;
-      session_name: string;
-    };
+    
+    console.log('Exam session response:', createSessionRes);
+    
+    // Use safeJson instead of .json()
+    const createSessionJson = await safeJson(createSessionRes);
+    console.log('Parsed exam session response:', createSessionJson);
+    
+    if (!createSessionRes.ok || createSessionJson.error) {
+      throw new Error(createSessionJson?.error || `HTTP ${createSessionRes.status}: สร้างรอบสอบไม่สำเร็จ`);
+    }
+    
+    const createdSession = createSessionJson.data;
+    if (!createdSession || !createdSession.session_id) {
+      throw new Error('Invalid response: missing session_id');
+    }
+    
     const newSessionId = createdSession.session_id;
+    console.log('Created session ID:', newSessionId);
 
     // 4) ดึง examinees (SELECT อนุญาต public ได้อยู่แล้ว)
+    console.log('Fetching examinees...');
     const { data: examineeDataRaw, error: examineeError } = await supabase
       .from('examiner')
       .select('*')
       .order('examinerid', { ascending: true });
 
-    if (examineeError) throw new Error(examineeError.message);
+    if (examineeError) {
+      console.error('Supabase error fetching examinees:', examineeError);
+      throw new Error(examineeError.message);
+    }
+    
     if (!examineeDataRaw || examineeDataRaw.length < totalExaminees) {
       toast.info(`พบผู้เข้าสอบในระบบเพียง ${examineeDataRaw?.length || 0} คน`);
       return;
     }
+
+    console.log(`Found ${examineeDataRaw.length} examinees, need ${totalExaminees}`);
 
     // 5) จัดลำดับผู้เข้าสอบตามการเลือก
     let arrangedExaminees = [...examineeDataRaw].slice(0, totalExaminees);
@@ -156,6 +197,8 @@ const createExamSession = async () => {
     const maxRows = selectedRooms.reduce((max, room) => Math.max(max, room.seatPattern.rows), 0);
     const maxCols = selectedRooms.reduce((max, room) => Math.max(max, room.seatPattern.cols), 0);
 
+    console.log('Creating seating plan with ID:', newPlanId);
+
     // ต้องมี API: POST /api/seating-plans/[id] (ใช้ supabaseAdmin)
     const createPlanRes = await fetch(`/api/seating-plans/${newPlanId}`, {
       method: 'POST',
@@ -168,8 +211,16 @@ const createExamSession = async () => {
         arrangement_data: [],           // จะอัปเดตทีหลัง
       }),
     });
-    const createPlanJson = await createPlanRes.json();
-    if (!createPlanRes.ok) throw new Error(createPlanJson?.error || 'สร้างแผนที่นั่งไม่สำเร็จ');
+    
+    console.log('Seating plan response:', createPlanRes);
+    
+    // Use safeJson instead of .json()
+    const createPlanJson = await safeJson(createPlanRes);
+    console.log('Parsed seating plan response:', createPlanJson);
+    
+    if (!createPlanRes.ok || createPlanJson.error) {
+      throw new Error(createPlanJson?.error || `HTTP ${createPlanRes.status}: สร้างแผนที่นั่งไม่สำเร็จ`);
+    }
 
     // 7) สร้าง seatAssignments + arrangementData (ข้ามห้องต่อเนื่อง)
     const seatAssignments: any[] = [];
@@ -177,7 +228,11 @@ const createExamSession = async () => {
     let examineeIndex = 0;
     let globalSeatNumber = 1;
 
+    console.log('Processing room allocations...');
+
     for (const room of selectedRooms) {
+      console.log(`Processing room: ${room.name} (${room.seatPattern.rows}x${room.seatPattern.cols})`);
+      
       const roomSeats: (string | null)[][] = Array.from(
         { length: room.seatPattern.rows },
         () => Array.from({ length: room.seatPattern.cols }, () => null)
@@ -221,18 +276,32 @@ const createExamSession = async () => {
       });
     }
 
+    console.log(`Created ${seatAssignments.length} seat assignments`);
+
     // 8) บันทึก seat_assignment ผ่าน API server (service role)
     if (seatAssignments.length > 0) {
+      console.log('Saving seat assignments...');
+      
       const bulkRes = await fetch('/api/seat-assignment/bulk', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ assignments: seatAssignments }),
       });
-      const bulkJson = await bulkRes.json();
-      if (!bulkRes.ok) throw new Error(bulkJson?.error || 'บันทึกที่นั่งไม่สำเร็จ');
+      
+      console.log('Bulk assignment response:', bulkRes);
+      
+      // Use safeJson instead of .json()
+      const bulkJson = await safeJson(bulkRes);
+      console.log('Parsed bulk assignment response:', bulkJson);
+      
+      if (!bulkRes.ok || bulkJson.error) {
+        throw new Error(bulkJson?.error || `HTTP ${bulkRes.status}: บันทึกที่นั่งไม่สำเร็จ`);
+      }
     }
 
     // 9) อัปเดตแผนให้มี arrangement_data + exam_count
+    console.log('Updating seating plan with final data...');
+    
     const updatePlanRes = await fetch(`/api/seating-plans/${newPlanId}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
@@ -253,8 +322,16 @@ const createExamSession = async () => {
         examEndTime: endTime,
       }),
     });
-    const updatePlanJson = await updatePlanRes.json();
-    if (!updatePlanRes.ok) throw new Error(updatePlanJson?.error || 'อัปเดตแผนไม่สำเร็จ');
+    
+    console.log('Update plan response:', updatePlanRes);
+    
+    // Use safeJson instead of .json()
+    const updatePlanJson = await safeJson(updatePlanRes);
+    console.log('Parsed update plan response:', updatePlanJson);
+    
+    if (!updatePlanRes.ok || updatePlanJson.error) {
+      throw new Error(updatePlanJson?.error || `HTTP ${updatePlanRes.status}: อัปเดตแผนไม่สำเร็จ`);
+    }
 
     // 10) อัปเดต state UI
     setExaminees(arrangedExaminees);
@@ -280,6 +357,7 @@ const createExamSession = async () => {
 
     setIsSessionActive(true);
     toast.success('สร้างรอบสอบและบันทึกที่นั่งสำเร็จ!');
+    
   } catch (error: any) {
     console.error('Error creating session:', error);
     toast.error('เกิดข้อผิดพลาด: ' + error.message);

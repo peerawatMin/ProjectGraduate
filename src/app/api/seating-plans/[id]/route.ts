@@ -1,35 +1,13 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { NextResponse } from "next/server";
+// Add this POST function to your existing /api/seating-plans/[id]/route.ts file
+// alongside your existing GET, PUT, and DELETE functions
+
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import type { InsertPlanData, SavedPlan } from "@/types/examTypes";
+import { SavedPlan,InsertPlanData  } from "@/types/examTypes";
+import { NextResponse } from "next/server";
 
-export const runtime = "nodejs";
-
-// GET /api/seating-plans/[id]
-export async function GET(
-  _req: Request,
-  { params }: { params: { id: string } }
-) {
-  const { id } = params;
-
-  try {
-    const { data, error } = await supabaseAdmin
-      .from("seating_plans")
-      .select("*")
-      .eq("seatpid", id)
-      .single();
-
-    if (error) throw error;
-    if (!data) return NextResponse.json({ error: "Not found" }, { status: 404 });
-
-    return NextResponse.json(data as SavedPlan);
-  } catch (err: any) {
-    return NextResponse.json({ error: String(err?.message ?? err) }, { status: 500 });
-  }
-}
-
-// PUT /api/seating-plans/[id]
-export async function PUT(
+// POST /api/seating-plans/[id] - Create new seating plan with specific ID
+export async function POST(
   req: Request,
   { params }: { params: { id: string } }
 ) {
@@ -38,43 +16,52 @@ export async function PUT(
   try {
     const body: InsertPlanData = await req.json();
 
-    const { data, error } = await supabaseAdmin
-      .from("seating_plans")
-      .update({ ...body, updated_at: new Date().toISOString() })
-      .eq("seatpid", id)
-      .select();
-
-    if (error) throw error;
-    if (!data?.length) {
-      return NextResponse.json({ error: "Update failed or not found" }, { status: 404 });
+    // Validate required fields
+    if (!body.plan_name?.trim()) {
+      return NextResponse.json({ error: 'plan_name is required' }, { status: 400 });
     }
 
-    return NextResponse.json({
-      message: "อัปเดตแผนผังสำเร็จ",
-      data: data[0] as SavedPlan,
-    });
-  } catch (err: any) {
-    return NextResponse.json({ error: String(err?.message ?? err) }, { status: 500 });
-  }
-}
+    const now = new Date().toISOString();
+    const insertData = {
+      seatpid: id, // Use the provided ID
+      ...body,
+      created_at: now,
+      updated_at: now,
+    };
 
-// DELETE /api/seating-plans/[id]
-export async function DELETE(
-  _req: Request,
-  { params }: { params: { id: string } }
-) {
-  const { id } = params;
+    console.log('Creating seating plan with data:', insertData);
 
-  try {
-    const { error } = await supabaseAdmin
+    const { data, error } = await supabaseAdmin
       .from("seating_plans")
-      .delete()
-      .eq("seatpid", id);
+      .insert([insertData])
+      .select();
 
-    if (error) throw error;
+    if (error) {
+      console.error('Supabase error creating seating plan:', error);
+      throw error;
+    }
 
-    return NextResponse.json({ message: "ลบแผนผังสำเร็จ" });
+    if (!data || data.length === 0) {
+      throw new Error('No data returned after insert');
+    }
+
+    console.log('Successfully created seating plan:', data[0]);
+
+    return NextResponse.json({
+      message: "สร้างแผนที่นั่งสำเร็จ",
+      data: data[0] as SavedPlan,
+    }, { status: 201 });
+
   } catch (err: any) {
-    return NextResponse.json({ error: String(err?.message ?? err) }, { status: 500 });
+    console.error('API error creating seating plan:', err);
+    
+    // Handle specific database errors
+    if (err.code === '23505') { // Unique constraint violation
+      return NextResponse.json({ error: 'มีแผนที่นั่งนี้อยู่แล้วในระบบ' }, { status: 400 });
+    }
+    
+    return NextResponse.json({ 
+      error: err.message || 'เกิดข้อผิดพลาดในการสร้างแผนที่นั่ง' 
+    }, { status: 500 });
   }
 }

@@ -93,7 +93,7 @@ export interface CurrentExamSessionState {
   roomDimensions?: { rows: number; cols: number } | null;
   exam_count: number;
   examRoomName?: string;
-  examRoomDescription?: string;
+  examRoomDescription?: string | null;
   examDate?: string; // YYYY-MM-DD
   examShift?: 'morning' | 'afternoon';
   examStartTime?: string; // HH:MM
@@ -141,7 +141,7 @@ export interface SavedPlan {
 // Insert Plan Data (POST API)
 // ------------------------
 export interface InsertPlanData {
-  session_id: string; // ต้องใส่เมื่อสร้าง plan
+  session_id: string | null; // ต้องใส่เมื่อสร้าง plan
   plan_name: string;
   seating_pattern: 'sequential' | 'random' | 'custom_layout';
   room_rows: number;
@@ -149,13 +149,13 @@ export interface InsertPlanData {
   arrangement_data: ExamRoomAllocation[];
   user_id: string | null;
   exam_count: number;
-  exam_room_name?: string;
-  exam_room_description?: string;
+  exam_room_name?: string | null;
+  exam_room_description?: string | null;
   total_examinees: number;
-  examDate?: string;
-  examShift?: 'morning' | 'afternoon';
-  examStartTime?: string;
-  examEndTime?: string;
+  examDate?: string | null;
+  examShift?: 'morning' | 'afternoon'| null;
+  examStartTime?: string | null;
+  examEndTime?: string | null;
 }
 
 export interface ExamSession {
